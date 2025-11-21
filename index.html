@@ -164,11 +164,8 @@
                     return;
                 }
                 
-                if (selectedBiome === 'floresta') {
-                    window.location.href = 'floresta.html';
-                } else {
-                    alert(`O bioma '${selectedBiome}' ainda não foi implementado.`);
-                }
+                // Redireciona para a página correta com base no bioma selecionado
+                window.location.href = `${selectedBiome}.html`;
             });
         });
     </script>
