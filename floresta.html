@@ -96,7 +96,7 @@
 <body class="light-theme">
 
     <div class="game-viewport">
-        <img src="" alt="Cenário de fundo do Eco Quest" class="hero-background" id="main-hero-background">
+        <img src="images/floresta/3.png" alt="Cenário de fundo do Eco Quest" class="hero-background" id="main-hero-background">
         <img src="images/titulo.png" alt="Eco Quest" class="game-title">
         
         <div class="game-content-overlay">
@@ -111,7 +111,7 @@
         </div>
 
         <div id="cutscene-screen">
-            <img id="cutscene-image" src="" alt="Cena de introdução">
+            <img id="cutscene-image" src="images/floresta/4.png" alt="Cena de introdução">
             <p id="cutscene-caption"></p>
         </div>
 
@@ -125,187 +125,251 @@
         </aside>
     </div>
 
+    <script src="js/config.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM ELEMENTS ---
-            const allDOMElements = {
-                cutsceneScreen: document.getElementById('cutscene-screen'),
-                cutsceneImage: document.getElementById('cutscene-image'),
-                cutsceneCaption: document.getElementById('cutscene-caption'),
-                mainHeroBackground: document.getElementById('main-hero-background'),
-                gameContentOverlay: document.querySelector('.game-content-overlay'),
-                chatHistory: document.getElementById('chat-history'),
-                userInput: document.getElementById('user-input'),
-                sendBtn: document.getElementById('send-btn'),
-                choicesContainer: document.getElementById('choices-container'),
-                contextDisplay: document.getElementById('context-display'),
-                actionsLog: document.getElementById('actions-log').querySelector('ul'),
-                progressDisplay: document.getElementById('progress-display'),
-                menuToggle: document.getElementById('menu-toggle'),
-                floatingMenu: document.getElementById('floating-menu'),
-                menuOverlay: document.getElementById('menu-overlay'),
-                themeSwitcher: document.getElementById('theme-switcher'),
-                body: document.body
-            };
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- DOM ELEMENTS ---
+        const allDOMElements = {
+            cutsceneScreen: document.getElementById('cutscene-screen'),
+            cutsceneImage: document.getElementById('cutscene-image'),
+            cutsceneCaption: document.getElementById('cutscene-caption'),
+            mainHeroBackground: document.getElementById('main-hero-background'),
+            gameContentOverlay: document.querySelector('.game-content-overlay'),
+            chatHistory: document.getElementById('chat-history'),
+            userInput: document.getElementById('user-input'),
+            sendBtn: document.getElementById('send-btn'),
+            choicesContainer: document.getElementById('choices-container'),
+            contextDisplay: document.getElementById('context-display'),
+            actionsLog: document.getElementById('actions-log').querySelector('ul'),
+            progressDisplay: document.getElementById('progress-display'),
+            menuToggle: document.getElementById('menu-toggle'),
+            floatingMenu: document.getElementById('floating-menu'),
+            menuOverlay: document.getElementById('menu-overlay'),
+            themeSwitcher: document.getElementById('theme-switcher'),
+            body: document.body
+        };
 
-            // --- GAME STATE ---
-            const gameState = {
-                isWaitingForResponse: false,
-            };
+        // --- GAME STATE ---
+        const gameState = {
+            isWaitingForResponse: false,
+            backendGameState: null // game_state vindo da API
+        };
 
-            // --- LÓGICA DO MENU E TEMA ---
-            function toggleMenu() {
-                allDOMElements.menuToggle.classList.toggle('open');
-                allDOMElements.floatingMenu.classList.toggle('open');
-                allDOMElements.menuOverlay.classList.toggle('open');
-            }
+        // --- LÓGICA DO MENU E TEMA ---
+        function toggleMenu() {
+            allDOMElements.menuToggle.classList.toggle('open');
+            allDOMElements.floatingMenu.classList.toggle('open');
+            allDOMElements.menuOverlay.classList.toggle('open');
+        }
 
-            function setTheme(theme) {
-                allDOMElements.body.classList.remove('light-theme', 'dark-theme');
-                allDOMElements.body.classList.add(theme + '-theme');
-                localStorage.setItem('theme', theme);
-            }
+        function setTheme(theme) {
+            allDOMElements.body.classList.remove('light-theme', 'dark-theme');
+            allDOMElements.body.classList.add(theme + '-theme');
+            localStorage.setItem('theme', theme);
+        }
 
-            allDOMElements.menuToggle.addEventListener('click', toggleMenu);
-            allDOMElements.menuOverlay.addEventListener('click', toggleMenu);
-            
-            allDOMElements.themeSwitcher.addEventListener('click', () => {
-                const currentTheme = localStorage.getItem('theme') || 'light';
-                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-                setTheme(newTheme);
-            });
-
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            setTheme(savedTheme);
-
-            // --- API & UI FUNCTIONS ---
-            async function postData(url = '', data = {}) {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                if (!response.ok) throw new Error(`Erro na API: ${response.statusText}`);
-                return response.json();
-            }
-
-            function addMessage(text, sender) {
-                const messageEl = document.createElement('div');
-                messageEl.classList.add('chat-message', sender);
-                messageEl.innerHTML = `<p>${text}</p>`;
-                allDOMElements.chatHistory.appendChild(messageEl);
-                allDOMElements.chatHistory.scrollTop = allDOMElements.chatHistory.scrollHeight;
-            }
-
-            function setInputDisabled(disabled) {
-                gameState.isWaitingForResponse = disabled;
-                allDOMElements.userInput.disabled = disabled;
-                allDOMElements.sendBtn.disabled = disabled;
-                allDOMElements.choicesContainer.style.pointerEvents = disabled ? 'none' : 'auto';
-                allDOMElements.userInput.placeholder = disabled ? 'Aguardando resposta do agente...' : 'Descreva sua ação...';
-            }
-
-            // --- GAME LOGIC ---
-            async function sendInteraction(responseText) {
-                if (gameState.isWaitingForResponse) return;
-                setInputDisabled(true);
-                allDOMElements.choicesContainer.innerHTML = '';
-
-                try {
-                    const taskInfo = await postData('/api/agents/start_task', { question: responseText });
-                    pollTaskStatus(taskInfo.status_url);
-                } catch (error) {
-                    addMessage(`Erro ao enviar sua ação: ${error.message}`, 'system');
-                    setInputDisabled(false);
-                }
-            }
-
-            async function pollTaskStatus(statusUrl) {
-                const interval = setInterval(async () => {
-                    try {
-                        const taskResult = await fetch(statusUrl).then(res => res.json());
-                        
-                        if (taskResult.state === 'SUCCESS') {
-                            clearInterval(interval);
-                            const agentResponse = taskResult.result; // O resultado real do agente
-                            
-                            addMessage(agentResponse.answer, 'agent');
-                            // Aqui você pode adicionar a lógica para renderizar opções, se o agente as retornar
-                            
-                            setInputDisabled(false);
-                        } else if (taskResult.state === 'FAILURE') {
-                            clearInterval(interval);
-                            addMessage(`A tarefa falhou: ${taskResult.status}`, 'system');
-                            setInputDisabled(false);
-                        }
-                        // Se for PENDING ou PROGRESS, continua no loop
-                    } catch (error) {
-                        clearInterval(interval);
-                        addMessage(`Erro ao buscar resultado: ${error.message}`, 'system');
-                        setInputDisabled(false);
-                    }
-                }, 3000);
-            }
-
-            // --- INITIALIZATION ---
-            function setupEventListeners() {
-                allDOMElements.sendBtn.addEventListener('click', () => {
-                    const text = allDOMElements.userInput.value.trim();
-                    if (text) {
-                        addMessage(text, 'player');
-                        allDOMElements.userInput.value = '';
-                        sendInteraction(text);
-                    }
-                });
-                allDOMElements.userInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        allDOMElements.sendBtn.click();
-                    }
-                });
-            }
-
-            function playForestCutscene() {
-                allDOMElements.cutsceneScreen.style.display = 'flex';
-                const scenes = [
-                    { img: 'images/floresta/4.png', text: 'Em uma floresta de Mata Atlântica, lar de animais, plantas e homens, a vida que só beneficia está em ameaça.' },
-                    { img: 'images/floresta/5.png', text: 'O fogo, que às vezes serve para renovar, agora chega de maneira inexplicável, cumprindo só seu objetivo de destruir.' },
-                    { img: 'images/floresta/3.png', text: 'Agora, eu chego para buscar a solução, para manter a vida e trazê-la de volta aqui.' },
-                    { img: 'images/floresta/3.png', text: 'Sou um agente ambiental, e você que está comigo é a inteligência que vai me orientar a buscar soluções para esta floresta devastada.' }
-                ];
-
-                function showScene(sceneIndex) {
-                    if (sceneIndex >= scenes.length) {
-                        allDOMElements.cutsceneScreen.style.opacity = 0;
-                        setTimeout(async () => {
-                            allDOMElements.cutsceneScreen.style.display = 'none';
-                            allDOMElements.mainHeroBackground.src = 'images/floresta/3.png';
-                            allDOMElements.gameContentOverlay.style.opacity = 1;
-                            
-                            // Inicia o jogo com a primeira pergunta
-                            const initialQuestion = "A situação é crítica. O fogo se alastra rapidamente. O que você faz primeiro?";
-                            addMessage(initialQuestion, 'agent');
-                            setInputDisabled(false);
-                        }, 1000);
-                        return;
-                    }
-                    const scene = scenes[sceneIndex];
-                    allDOMElements.cutsceneCaption.style.opacity = 0;
-                    allDOMElements.cutsceneImage.style.opacity = 0;
-                    setTimeout(() => {
-                        allDOMElements.cutsceneImage.src = scene.img;
-                        allDOMElements.cutsceneCaption.textContent = scene.text;
-                        allDOMElements.cutsceneImage.style.opacity = 1;
-                        allDOMElements.cutsceneCaption.style.opacity = 1;
-                        setTimeout(() => showScene(sceneIndex + 1), 5000);
-                    }, 1000);
-                }
-                showScene(0);
-            }
-
-            setupEventListeners();
-            playForestCutscene();
+        allDOMElements.menuToggle.addEventListener('click', toggleMenu);
+        allDOMElements.menuOverlay.addEventListener('click', toggleMenu);
+    
+        allDOMElements.themeSwitcher.addEventListener('click', () => {
+            const currentTheme = localStorage.getItem('theme') || 'light';
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            setTheme(newTheme);
         });
+
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        setTheme(savedTheme);
+
+        // --- API & UI FUNCTIONS ---
+        async function postData(url = '', data = {}) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const text = await response.text();
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (e) {
+                throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
+            }
+            if (!response.ok || json.status === 'error') {
+                const msg = json.error || response.statusText;
+                throw new Error(msg);
+            }
+            return json;
+        }
+
+        function addMessage(text, sender) {
+            const messageEl = document.createElement('div');
+            messageEl.classList.add('chat-message', sender);
+            messageEl.innerHTML = `<p>${text}</p>`;
+            allDOMElements.chatHistory.appendChild(messageEl);
+            allDOMElements.chatHistory.scrollTop = allDOMElements.chatHistory.scrollHeight;
+        }
+
+        function setInputDisabled(disabled) {
+            gameState.isWaitingForResponse = disabled;
+            allDOMElements.userInput.disabled = disabled;
+            allDOMElements.sendBtn.disabled = disabled;
+            allDOMElements.choicesContainer.style.pointerEvents = disabled ? 'none' : 'auto';
+            allDOMElements.userInput.placeholder = disabled
+                ? 'Aguardando resposta do agente...'
+                : 'Descreva sua ação...';
+        }
+
+        function renderChoices(options) {
+            allDOMElements.choicesContainer.innerHTML = '';
+            if (!Array.isArray(options)) return;
+            options.forEach(option => {
+                const btn = document.createElement('button');
+                btn.classList.add('btn', 'btn-choice');
+                btn.textContent = option;
+                btn.addEventListener('click', () => {
+                    addMessage(option, 'player');
+                    sendPlayerDecision(option);
+                });
+                allDOMElements.choicesContainer.appendChild(btn);
+            });
+        }
+
+        function logAction(text) {
+            const li = document.createElement('li');
+            li.textContent = text;
+            allDOMElements.actionsLog.appendChild(li);
+        }
+
+        function updateSidebar(response) {
+            const chapter = response.chapter || 'Investigação em curso';
+            const op = response.operation || 'Operação desconhecida';
+            const narrative = response.narrative || {};
+            const progress = response.progress || '';
+
+            allDOMElements.contextDisplay.innerHTML = `
+                <p><strong>${op}</strong></p>
+                <p>${chapter}</p>
+                <p style="margin-top:8px;">${narrative.narrative_hint || ''}</p>
+            `;
+
+            allDOMElements.progressDisplay.innerHTML = `
+                <p>${progress}</p>
+                <p>Perigo: ${(narrative.danger_level || '').toUpperCase()}</p>
+            `;
+        }
+
+        // --- CHAMADAS À API /api/floresta ---
+        async function startGame() {
+            try {
+                setInputDisabled(true);
+                addMessage('Iniciando Operação Cinzas da Floresta...', 'system');
+
+                const response = await postData('/api/floresta', { action: 'start' });
+
+                gameState.backendGameState = response.game_state || null;
+
+                const narrative = response.narrative || {};
+                const panel = narrative.panel_description || 'Cena inicial indisponível.';
+                addMessage(panel, 'agent');
+                renderChoices(narrative.inner_voice_options || []);
+                updateSidebar(response);
+
+                setInputDisabled(false);
+            } catch (error) {
+                addMessage(`Erro ao iniciar a história: ${error.message}`, 'system');
+                setInputDisabled(false);
+            }
+        }
+
+        async function sendPlayerDecision(playerText) {
+            if (gameState.isWaitingForResponse) return;
+            setInputDisabled(true);
+            allDOMElements.choicesContainer.innerHTML = '';
+            logAction(playerText);
+
+            try {
+                const payload = {
+                    action: 'continue',
+                    player_decision: playerText,
+                    game_state: gameState.backendGameState || {}
+                };
+                const response = await postData('/api/floresta', payload);
+
+                gameState.backendGameState = response.game_state || null;
+
+                const narrative = response.narrative || {};
+                const panel = narrative.panel_description || 'Sem descrição para esta cena.';
+                addMessage(panel, 'agent');
+                renderChoices(narrative.inner_voice_options || []);
+                updateSidebar(response);
+
+                setInputDisabled(false);
+            } catch (error) {
+                addMessage(`Erro ao continuar a história: ${error.message}`, 'system');
+                setInputDisabled(false);
+            }
+        }
+
+        async function sendInteractionFromInput() {
+            const text = allDOMElements.userInput.value.trim();
+            if (!text) return;
+            addMessage(text, 'player');
+            allDOMElements.userInput.value = '';
+            await sendPlayerDecision(text);
+        }
+
+        // --- INITIALIZATION ---
+        function setupEventListeners() {
+            allDOMElements.sendBtn.addEventListener('click', () => {
+                sendInteractionFromInput();
+            });
+            allDOMElements.userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendInteractionFromInput();
+                }
+            });
+        }
+
+        function playForestCutscene() {
+            allDOMElements.cutsceneScreen.style.display = 'flex';
+            const scenes = [
+                { img: 'images/floresta/4.png', text: 'Em uma floresta de Mata Atlântica, lar de animais, plantas e homens, a vida que só beneficia está em ameaça.' },
+                { img: 'images/floresta/5.png', text: 'O fogo, que às vezes serve para renovar, agora chega de maneira inexplicável, cumprindo só seu objetivo de destruir.' },
+                { img: 'images/floresta/3.png', text: 'Agora, eu chego para buscar a solução, para manter a vida e trazê-la de volta aqui.' },
+                { img: 'images/floresta/3.png', text: 'Sou um agente ambiental, e você que está comigo é a inteligência que vai me orientar a buscar soluções para esta floresta devastada.' }
+            ];
+
+            function showScene(sceneIndex) {
+                if (sceneIndex >= scenes.length) {
+                    allDOMElements.cutsceneScreen.style.opacity = 0;
+                    setTimeout(async () => {
+                        allDOMElements.cutsceneScreen.style.display = 'none';
+                        allDOMElements.mainHeroBackground.src = 'images/floresta/3.png';
+                        allDOMElements.gameContentOverlay.style.opacity = 1;
+
+                        // Em vez de pergunta fixa, inicia o jogo pela API
+                        await startGame();
+                    }, 1000);
+                    return;
+                }
+                const scene = scenes[sceneIndex];
+                allDOMElements.cutsceneCaption.style.opacity = 0;
+                allDOMElements.cutsceneImage.style.opacity = 0;
+                setTimeout(() => {
+                    allDOMElements.cutsceneImage.src = scene.img;
+                    allDOMElements.cutsceneCaption.textContent = scene.text;
+                    allDOMElements.cutsceneImage.style.opacity = 1;
+                    allDOMElements.cutsceneCaption.style.opacity = 1;
+                    setTimeout(() => showScene(sceneIndex + 1), 5000);
+                }, 1000);
+            }
+            showScene(0);
+        }
+
+        setupEventListeners();
+        playForestCutscene();
+    });
     </script>
 </body>
 </html>
