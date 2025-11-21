@@ -1,24 +1,27 @@
 # Dockerfile.backend
-# Estágio 1: Construir a imagem da API Flask
-
-# Use uma imagem base oficial do Python
 FROM python:3.10-slim
 
-# Define o diretório de trabalho dentro do contêiner
+# Define diretório de trabalho
 WORKDIR /app
 
-# Copie o arquivo de dependências primeiro para aproveitar o cache do Docker
-COPY ./cloud_function/requirements.txt /app/requirements.txt
+# Copie apenas o requirements.txt primeiro (cache)
+COPY requirements.txt /app/
 
-# Instale as dependências
+# Instale dependências
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie todo o código da API para o diretório de trabalho
-COPY ./cloud_function /main
+# Copie os arquivos Python para o diretório raiz do app
+COPY main.py /app/
+COPY game_master_groq.py /app/
+COPY game_master_mangue.py /app/
+COPY game_master_mar.py /app/
 
-# Exponha a porta 8080, que é a porta que a API usa
+# Exponha a porta
 EXPOSE 8080
 
-# O comando para iniciar a aplicação
-# Usamos o Gunicorn para um servidor de produção mais robusto
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "main:app"]
+# Variáveis de ambiente padrão
+ENV PORT=8080
+ENV FLASK_ENV=production
+
+# Comando para iniciar com Gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "2", "--timeout", "120", "main:app"]
