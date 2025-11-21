@@ -198,7 +198,7 @@
             function addMessage(text, sender) {
                 const messageEl = document.createElement('div');
                 messageEl.classList.add('chat-message', sender);
-                messageEl.innerHTML = `<p>${text}</p>`; // Use innerHTML para renderizar HTML se necessário
+                messageEl.innerHTML = `<p>${text}</p>`;
                 allDOMElements.chatHistory.appendChild(messageEl);
                 allDOMElements.chatHistory.scrollTop = allDOMElements.chatHistory.scrollHeight;
             }
@@ -228,9 +228,8 @@
                 addMessage(narrative.panel_description, 'agent');
                 renderChoices(narrative.inner_voice_options);
                 
-                gameState.internalState = game_state; // Salva o estado atual
+                gameState.internalState = game_state;
                 
-                // Atualiza o painel lateral
                 allDOMElements.contextDisplay.innerHTML = `<p>Fase: ${game_state.phase}</p>`;
                 const evidenceList = game_state.evidence_collected.filter(e => e).map(e => `<li>${e}</li>`).join('');
                 allDOMElements.actionsLog.innerHTML = evidenceList || '<li>Nenhuma evidência encontrada.</li>';
@@ -265,6 +264,22 @@
             }
 
             // --- INITIALIZATION ---
+            function setupEventListeners() {
+                allDOMElements.sendBtn.addEventListener('click', () => {
+                    const text = allDOMElements.userInput.value.trim();
+                    if (text) {
+                        handlePlayerChoice(text); // Reutiliza a mesma lógica das opções
+                        allDOMElements.userInput.value = '';
+                    }
+                });
+                allDOMElements.userInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        allDOMElements.sendBtn.click();
+                    }
+                });
+            }
+
             async function startGame() {
                 setInputDisabled(true);
                 try {
@@ -298,7 +313,6 @@
                             allDOMElements.mainHeroBackground.src = 'images/floresta/3.png';
                             allDOMElements.gameContentOverlay.style.opacity = 1;
                             
-                            // Inicia o jogo com a resposta da API
                             updateUI(initialApiResponse);
                             setInputDisabled(false);
                         }, 1000);
@@ -318,6 +332,7 @@
                 showScene(0);
             }
 
+            setupEventListeners();
             startGame();
         });
     </script>
