@@ -5,420 +5,91 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Eco Quest - Floresta em Chamas</title>
     <style>
+        /* O CSS permanece o mesmo */
         :root {
-            --primary: #1A5D1A;
-            --primary-hover: #144514;
-            --secondary: #F5F5F5;
-            --white: #FFFFFF;
-            --text-primary: #212121;
-            --text-secondary: #555555;
-            --border: #E0E0E0;
-            --danger: #D32F2F;
-            --space-sm: 8px;
-            --space-md: 16px;
-            --space-lg: 24px;
-            --space-xl: 32px;
-            --font-primary: 'Segoe UI', Roboto, sans-serif;
-            --font-size-sm: 14px;
-            --font-size-base: 16px;
-            --font-size-lg: 20px;
-            --font-size-xl: 28px;
-            --line-height-base: 1.6;
-            --radius-md: 8px;
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+            --primary: #1A5D1A; --primary-hover: #144514; --secondary: #F5F5F5;
+            --white: #FFFFFF; --text-primary: #212121; --text-secondary: #555555;
+            --border: #E0E0E0; --danger: #D32F2F;
+            --space-sm: 8px; --space-md: 16px; --space-lg: 24px; --space-xl: 32px;
+            --font-primary: 'Segoe UI', Roboto, sans-serif; --font-size-sm: 14px;
+            --font-size-base: 16px; --font-size-lg: 20px; --font-size-xl: 28px;
+            --line-height-base: 1.6; --radius-md: 8px; --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
             --transition-base: 0.3s ease;
         }
 
         body.light-theme {
-            --bg-main: #F5F5F5;
-            --bg-panel: rgba(255, 255, 255, 0.25);
-            --bg-panel-hover: rgba(255, 255, 255, 0.4);
-            --bg-menu: rgba(255, 255, 255, 0.7);
-            --text-main: #212121;
-            --text-panel: #FFFFFF;
-            --text-menu: #212121;
-            --border-color: rgba(255, 255, 255, 0.3);
-            --shadow-text: 1px 1px 3px rgba(0,0,0,0.5);
+            --bg-main: #F5F5F5; --bg-panel: rgba(255, 255, 255, 0.25);
+            --bg-panel-hover: rgba(255, 255, 255, 0.4); --bg-menu: rgba(255, 255, 255, 0.7);
+            --text-main: #212121; --text-panel: #FFFFFF; --text-menu: #212121;
+            --border-color: rgba(255, 255, 255, 0.3); --shadow-text: 1px 1px 3px rgba(0,0,0,0.5);
         }
 
         body.dark-theme {
-            --primary: #4CAF50;
-            --primary-hover: #388E3C;
-            --bg-main: #121212;
-            --bg-panel: rgba(18, 18, 18, 0.6);
-            --bg-panel-hover: rgba(18, 18, 18, 0.8);
-            --bg-menu: rgba(30, 30, 30, 0.8);
-            --text-main: #FFFFFF;
-            --text-panel: #FFFFFF;
-            --text-menu: #FFFFFF;
-            --border-color: rgba(255, 255, 255, 0.2);
-            --shadow-text: none;
+            --primary: #4CAF50; --primary-hover: #388E3C; --bg-main: #121212;
+            --bg-panel: rgba(18, 18, 18, 0.6); --bg-panel-hover: rgba(18, 18, 18, 0.8);
+            --bg-menu: rgba(30, 30, 30, 0.8); --text-main: #FFFFFF; --text-panel: #FFFFFF;
+            --text-menu: #FFFFFF; --border-color: rgba(255, 255, 255, 0.2); --shadow-text: none;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: var(--font-primary);
-            font-size: var(--font-size-base);
-            line-height: var(--line-height-base);
-            color: var(--text-main);
-            background-color: var(--bg-main);
-            overflow: hidden;
+            font-family: var(--font-primary); font-size: var(--font-size-base);
+            line-height: var(--line-height-base); color: var(--text-main);
+            background-color: var(--bg-main); overflow: hidden;
             transition: background-color var(--transition-base), color var(--transition-base);
         }
 
-        .game-viewport {
-            position: relative;
-            width: 100vw;
-            height: 100vh;
-            overflow: hidden;
-        }
+        .game-viewport { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        .hero-background { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; transition: opacity 1.5s ease-in-out; }
+        .game-content-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.3); z-index: 2; display: flex; justify-content: center; align-items: center; padding: var(--space-lg); opacity: 0; transition: opacity 1s ease; }
 
-        .hero-background {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            z-index: 1;
-            transition: opacity 1.5s ease-in-out;
-        }
+        .game-title { position: absolute; top: var(--space-lg); left: 50%; transform: translateX(-50%); z-index: 1001; width: 300px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4)); }
+        .menu-toggle { position: absolute; top: var(--space-lg); left: var(--space-lg); width: 50px; height: 50px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; cursor: pointer; z-index: 1002; box-shadow: var(--shadow-md); backdrop-filter: blur(8px); }
+        .menu-toggle .bar { width: 24px; height: 3px; background: var(--text-panel); border-radius: 2px; transition: all var(--transition-base); }
+        .menu-toggle.open .bar { background: var(--text-menu); }
+        .menu-toggle.open .bar:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+        .menu-toggle.open .bar:nth-child(2) { opacity: 0; }
+        .menu-toggle.open .bar:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
 
-        .game-content-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            z-index: 2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: var(--space-lg);
-            opacity: 0;
-            transition: opacity 1s ease;
-        }
+        .floating-menu { position: fixed; top: 0; left: -350px; width: 350px; height: 100vh; background: var(--bg-menu); backdrop-filter: blur(15px); padding: var(--space-lg); padding-top: 80px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; z-index: 1001; transition: left var(--transition-base); box-shadow: var(--shadow-md); color: var(--text-menu); }
+        .floating-menu.open { left: 0; }
+        .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; opacity: 0; visibility: hidden; transition: opacity var(--transition-base), visibility var(--transition-base); }
+        .menu-overlay.open { opacity: 1; visibility: visible; }
 
-        .game-title {
-            position: absolute;
-            top: var(--space-lg);
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1001;
-            width: 300px;
-            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.4));
-        }
+        .sidebar-section { background: rgba(0,0,0,0.05); padding: var(--space-md); border-radius: var(--radius-md); }
+        .sidebar-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--primary); margin-bottom: var(--space-md); }
+        #context-display, #actions-log { font-size: var(--font-size-sm); max-height: 200px; overflow-y: auto; }
+        #actions-log ul { list-style-position: inside; padding-left: var(--space-sm); }
+        .theme-switcher-btn { margin-top: auto; background: none; border: 1px solid var(--text-menu); color: var(--text-menu); }
 
-        .menu-toggle {
-            position: absolute;
-            top: var(--space-lg);
-            left: var(--space-lg);
-            width: 50px;
-            height: 50px;
-            background: var(--bg-panel);
-            border: 1px solid var(--border-color);
-            border-radius: 50%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-            z-index: 1002;
-            box-shadow: var(--shadow-md);
-            backdrop-filter: blur(8px);
-        }
+        .interaction-panel { max-width: 900px; width: 90%; background: var(--bg-panel); padding: var(--space-xl); border-radius: var(--radius-md); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 
-        .menu-toggle .bar {
-            width: 24px;
-            height: 3px;
-            background: var(--text-panel);
-            border-radius: 2px;
-            transition: all var(--transition-base);
-        }
+        #cutscene-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2000; display: flex; justify-content: center; align-items: flex-end; background-color: #000; }
+        #cutscene-image { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.5s ease-in-out; }
+        #cutscene-caption { position: relative; z-index: 2001; background: rgba(0,0,0,0.7); color: white; padding: var(--space-lg); margin-bottom: 10%; max-width: 700px; width: 80%; border-radius: var(--radius-md); text-align: center; font-size: var(--font-size-lg); opacity: 0; transition: opacity 1s ease-in-out; }
 
-        .menu-toggle.open .bar {
-            background: var(--text-menu);
-        }
-
-        .menu-toggle.open .bar:nth-child(1) {
-            transform: translateY(8px) rotate(45deg);
-        }
-
-        .menu-toggle.open .bar:nth-child(2) {
-            opacity: 0;
-        }
-
-        .menu-toggle.open .bar:nth-child(3) {
-            transform: translateY(-8px) rotate(-45deg);
-        }
-
-        .floating-menu {
-            position: fixed;
-            top: 0;
-            left: -350px;
-            width: 350px;
-            height: 100vh;
-            background: var(--bg-menu);
-            backdrop-filter: blur(15px);
-            padding: var(--space-lg);
-            padding-top: 80px;
-            border-right: 1px solid var(--border-color);
-            display: flex;
-            flex-direction: column;
-            z-index: 1001;
-            transition: left var(--transition-base);
-            box-shadow: var(--shadow-md);
-            color: var(--text-menu);
-        }
-
-        .floating-menu.open {
-            left: 0;
-        }
-
-        .menu-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity var(--transition-base), visibility var(--transition-base);
-        }
-
-        .menu-overlay.open {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .sidebar-section {
-            background: rgba(0,0,0,0.05);
-            padding: var(--space-md);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--space-md);
-        }
-
-        .sidebar-title {
-            font-size: var(--font-size-lg);
-            font-weight: 600;
-            color: var(--primary);
-            margin-bottom: var(--space-md);
-        }
-
-        #context-display, #actions-log {
-            font-size: var(--font-size-sm);
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        #actions-log ul {
-            list-style-position: inside;
-            padding-left: var(--space-sm);
-        }
-
-        .theme-switcher-btn {
-            margin-top: auto;
-            background: none;
-            border: 1px solid var(--text-menu);
-            color: var(--text-menu);
-        }
-
-        .interaction-panel {
-            max-width: 900px;
-            width: 90%;
-            background: var(--bg-panel);
-            padding: var(--space-xl);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-md);
-            border: 1px solid var(--border-color);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-
-        #cutscene-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 2000;
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            background-color: #000;
-        }
-
-        #cutscene-image {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            opacity: 0;
-            transition: opacity 1.5s ease-in-out;
-        }
-
-        #cutscene-caption {
-            position: relative;
-            z-index: 2001;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: var(--space-lg);
-            margin-bottom: 10%;
-            max-width: 700px;
-            width: 80%;
-            border-radius: var(--radius-md);
-            text-align: center;
-            font-size: var(--font-size-lg);
-            opacity: 0;
-            transition: opacity 1s ease-in-out;
-        }
-
-        #game-screen {
-            display: flex;
-            flex-direction: column;
-            height: 80vh;
-            max-height: 700px;
-        }
-
-        #chat-history {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: var(--space-md);
-            margin-bottom: var(--space-md);
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-        }
-
-        .chat-message {
-            max-width: 85%;
-            padding: var(--space-sm) var(--space-md);
-            border-radius: var(--radius-md);
-            line-height: 1.5;
-            color: var(--text-panel);
-            text-shadow: var(--shadow-text);
-        }
-
-        .chat-message.agent {
-            background: rgba(0,0,0,0.2);
-            align-self: flex-start;
-        }
-
-        .chat-message.player {
-            background: var(--primary);
-            color: var(--white);
-            align-self: flex-end;
-            text-shadow: none;
-        }
-
-        .chat-message.system {
-            color: #ccc;
-            font-style: italic;
-            text-align: center;
-            background: none;
-        }
-
-        .chat-input-area {
-            display: flex;
-            gap: var(--space-md);
-        }
-
-        #user-input {
-            flex-grow: 1;
-            padding: var(--space-md);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            background: rgba(0, 0, 0, 0.2);
-            color: var(--text-panel);
-            resize: none;
-            font-family: var(--font-primary);
-            font-size: var(--font-size-base);
-        }
-
-        #user-input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-base);
-            font-weight: 600;
-            cursor: pointer;
-            transition: all var(--transition-base);
-        }
-
-        .btn-primary {
-            background: var(--primary);
-            color: var(--white);
-            text-align: center;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .btn-primary:disabled {
-            background: #999;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-choice {
-            background: var(--bg-panel);
-            color: var(--text-panel);
-            border: 1px solid var(--border-color);
-            backdrop-filter: blur(5px);
-            text-align: center;
-        }
-
-        .btn-choice:hover {
-            background: var(--bg-panel-hover);
-            border-color: var(--primary);
-        }
-
-        .choices-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--space-md);
-            justify-content: center;
-            margin-top: var(--space-md);
-        }
+        #game-screen { display: flex; flex-direction: column; height: 80vh; max-height: 700px; }
+        #chat-history { flex-grow: 1; overflow-y: auto; padding: var(--space-md); margin-bottom: var(--space-md); display: flex; flex-direction: column; gap: var(--space-md); }
+        .chat-message { max-width: 85%; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-md); line-height: 1.5; color: var(--text-panel); text-shadow: var(--shadow-text); }
+        .chat-message.agent { background: rgba(0,0,0,0.2); align-self: flex-start; }
+        .chat-message.player { background: var(--primary); color: var(--white); align-self: flex-end; text-shadow: none; }
+        .chat-message.system { color: #ccc; font-style: italic; text-align: center; background: none; }
+        .chat-input-area { display: flex; gap: var(--space-md); }
+        #user-input { flex-grow: 1; padding: var(--space-md); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: rgba(0, 0, 0, 0.2); color: var(--text-panel); resize: none; }
+        #user-input::placeholder { color: rgba(255, 255, 255, 0.7); }
+        .btn { padding: 12px 24px; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: 600; cursor: pointer; transition: all var(--transition-base); }
+        .btn-primary { background: var(--primary); color: var(--white); text-align: center; }
+        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .btn-choice { background: var(--bg-panel); color: var(--text-panel); border: 1px solid var(--border-color); backdrop-filter: blur(5px); text-align: center; }
+        .btn-choice:hover { background: var(--bg-panel-hover); border-color: var(--primary); }
+        .choices-container { display: flex; flex-wrap: wrap; gap: var(--space-md); justify-content: center; margin-top: var(--space-md); }
 
         @media (max-width: 768px) {
-            .game-title {
-                width: 200px;
-                top: var(--space-md);
-            }
-
-            .interaction-panel {
-                width: 95%;
-                padding: var(--space-lg);
-            }
-
-            .floating-menu {
-                width: 280px;
-                left: -280px;
-            }
-
-            #cutscene-caption {
-                font-size: var(--font-size-base);
-                margin-bottom: 20%;
-            }
+            .game-title { width: 200px; top: var(--space-md); }
+            .interaction-panel { width: 95%; padding: var(--space-lg); }
+            .floating-menu { width: 280px; left: -280px; }
+            #cutscene-caption { font-size: var(--font-size-base); margin-bottom: 20%; }
         }
     </style>
 </head>
@@ -444,36 +115,12 @@
             <p id="cutscene-caption"></p>
         </div>
 
-        <div class="menu-toggle" id="menu-toggle">
-            <div class="bar"></div>
-            <div class="bar"></div>
-            <div class="bar"></div>
-        </div>
-
+        <div class="menu-toggle" id="menu-toggle"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
         <div class="menu-overlay" id="menu-overlay"></div>
-
         <aside class="floating-menu" id="floating-menu">
-            <div class="sidebar-section">
-                <h2 class="sidebar-title">🌍 Contexto</h2>
-                <div id="context-display">
-                    <p>Aguardando início do jogo...</p>
-                </div>
-            </div>
-
-            <div class="sidebar-section">
-                <h2 class="sidebar-title">📝 Ações</h2>
-                <div id="actions-log">
-                    <ul></ul>
-                </div>
-            </div>
-
-            <div class="sidebar-section">
-                <h2 class="sidebar-title">🏆 Progresso</h2>
-                <div id="progress-display">
-                    <p>0%</p>
-                </div>
-            </div>
-
+            <div class="sidebar-section"><h2 class="sidebar-title">🌍 Contexto</h2><div id="context-display"><p>Aguardando...</p></div></div>
+            <div class="sidebar-section"><h2 class="sidebar-title">📝 Ações</h2><div id="actions-log"><ul></ul></div></div>
+            <div class="sidebar-section"><h2 class="sidebar-title">🏆 Progresso</h2><div id="progress-display"><p>0%</p></div></div>
             <button class="btn theme-switcher-btn" id="theme-switcher">☀️/🌙 Tema</button>
         </aside>
     </div>
@@ -505,8 +152,7 @@
         // --- GAME STATE ---
         const gameState = {
             isWaitingForResponse: false,
-            currentScenario: 'floresta', // floresta | mangue | mar
-            backendGameState: null
+            backendGameState: null // game_state vindo da API
         };
 
         // --- LÓGICA DO MENU E TEMA ---
@@ -534,7 +180,27 @@
         const savedTheme = localStorage.getItem('theme') || 'light';
         setTheme(savedTheme);
 
-        // --- UI FUNCTIONS ---
+        // --- API & UI FUNCTIONS ---
+        async function postData(url = '', data = {}) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const text = await response.text();
+            let json;
+            try {
+                json = JSON.parse(text);
+            } catch (e) {
+                throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
+            }
+            if (!response.ok || json.status === 'error') {
+                const msg = json.error || response.statusText;
+                throw new Error(msg);
+            }
+            return json;
+        }
+
         function addMessage(text, sender) {
             const messageEl = document.createElement('div');
             messageEl.classList.add('chat-message', sender);
@@ -555,8 +221,7 @@
 
         function renderChoices(options) {
             allDOMElements.choicesContainer.innerHTML = '';
-            if (!Array.isArray(options) || options.length === 0) return;
-
+            if (!Array.isArray(options)) return;
             options.forEach(option => {
                 const btn = document.createElement('button');
                 btn.classList.add('btn', 'btn-choice');
@@ -593,23 +258,13 @@
             `;
         }
 
-        // --- API CALLS ---
-        async function startGame(scenario = 'floresta') {
+        // --- CHAMADAS À API /api/floresta ---
+        async function startGame() {
             try {
                 setInputDisabled(true);
-                gameState.currentScenario = scenario;
+                addMessage('Iniciando Operação Cinzas da Floresta...', 'system');
 
-                const scenarioNames = {
-                    floresta: 'Operação Cinzas da Floresta',
-                    mangue: 'Guardiões do Mangue',
-                    mar: 'Redes da Sobrevivência'
-                };
-
-                addMessage(`Iniciando ${scenarioNames[scenario]}...`, 'system');
-
-                // Usa apiRequest do config.js
-                const endpoint = API_CONFIG.endpoints[scenario];
-                const response = await apiRequest(endpoint, { action: 'start' }, 'POST');
+                const response = await postData('/api/floresta', { action: 'start' });
 
                 gameState.backendGameState = response.game_state || null;
 
@@ -621,8 +276,7 @@
 
                 setInputDisabled(false);
             } catch (error) {
-                console.error('Erro ao iniciar:', error);
-                addMessage(`❌ Erro ao iniciar a história: ${error.message}`, 'system');
+                addMessage(`Erro ao iniciar a história: ${error.message}`, 'system');
                 setInputDisabled(false);
             }
         }
@@ -639,9 +293,7 @@
                     player_decision: playerText,
                     game_state: gameState.backendGameState || {}
                 };
-
-                const endpoint = API_CONFIG.endpoints[gameState.currentScenario];
-                const response = await apiRequest(endpoint, payload, 'POST');
+                const response = await postData('/api/floresta', payload);
 
                 gameState.backendGameState = response.game_state || null;
 
@@ -653,8 +305,7 @@
 
                 setInputDisabled(false);
             } catch (error) {
-                console.error('Erro ao continuar:', error);
-                addMessage(`❌ Erro ao continuar a história: ${error.message}`, 'system');
+                addMessage(`Erro ao continuar a história: ${error.message}`, 'system');
                 setInputDisabled(false);
             }
         }
@@ -672,7 +323,6 @@
             allDOMElements.sendBtn.addEventListener('click', () => {
                 sendInteractionFromInput();
             });
-
             allDOMElements.userInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -698,16 +348,14 @@
                         allDOMElements.mainHeroBackground.src = 'images/floresta/3.png';
                         allDOMElements.gameContentOverlay.style.opacity = 1;
 
-                        // Inicia o jogo via API
-                        await startGame('floresta');
+                        // Em vez de pergunta fixa, inicia o jogo pela API
+                        await startGame();
                     }, 1000);
                     return;
                 }
-
                 const scene = scenes[sceneIndex];
                 allDOMElements.cutsceneCaption.style.opacity = 0;
                 allDOMElements.cutsceneImage.style.opacity = 0;
-
                 setTimeout(() => {
                     allDOMElements.cutsceneImage.src = scene.img;
                     allDOMElements.cutsceneCaption.textContent = scene.text;
@@ -716,37 +364,11 @@
                     setTimeout(() => showScene(sceneIndex + 1), 5000);
                 }, 1000);
             }
-
             showScene(0);
         }
 
-        // Verifica se a API está disponível antes de começar
-        async function checkAPIHealth() {
-            try {
-                const response = await fetch('/health');
-                if (response.ok) {
-                    console.log('✅ API disponível');
-                    return true;
-                }
-            } catch (error) {
-                console.error('❌ API não disponível:', error);
-                addMessage('⚠️ Erro: Não foi possível conectar à API do jogo. Verifique se o backend está rodando.', 'system');
-                return false;
-            }
-        }
-
-        // Inicialização
-        (async () => {
-            setupEventListeners();
-            const apiAvailable = await checkAPIHealth();
-            if (apiAvailable) {
-                playForestCutscene();
-            } else {
-                // Mostra tela sem cutscene se API não estiver disponível
-                allDOMElements.cutsceneScreen.style.display = 'none';
-                allDOMElements.gameContentOverlay.style.opacity = 1;
-            }
-        })();
+        setupEventListeners();
+        playForestCutscene();
     });
     </script>
 </body>
