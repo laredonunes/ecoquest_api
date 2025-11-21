@@ -1,20 +1,17 @@
 # Dockerfile.backend
 FROM python:3.10-slim
 
-# Define diretório de trabalho
-WORKDIR /app
+# Diretório de trabalho dentro do container
+WORKDIR /app/cloud_function
 
-# Copie apenas o requirements.txt primeiro (cache)
-COPY requirements.txt /app/
+# Copia o requirements da API (pasta cloud_function)
+COPY cloud_function/requirements.txt /app/cloud_function/requirements.txt
 
-# Instale dependências
+# Instala dependências da API
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copie os arquivos Python para o diretório raiz do app
-COPY cloud_function/main.py /app/
-COPY cloud_function/floresta/mangue.py /app/
-COPY cloud_function/floresta/mar.py /app/
-COPY cloud_function/floresta/mar.py /app/
+# Copia TODO o código da API para o container
+COPY cloud_function /app/cloud_function
 
 # Exponha a porta
 EXPOSE 8080

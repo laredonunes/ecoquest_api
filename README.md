@@ -101,3 +101,10 @@ A API é projetada para ser stateful do lado do cliente. O cliente (seu front-en
 - **🔥 Operação Cinzas da Floresta**: Investigue um incêndio criminoso que esconde uma operação de desmatamento ilegal.
 - **🌊 Guardiões do Mangue**: Lute contra a supressão de áreas de mangue com base em documentos falsificados.
 - **🐟 Redes da Sobrevivência**: Medie o conflito entre pesca ilegal em larga escala e a subsistência de comunidades locais.
+
+Flask
+flask-cors
+requests
+python-dotenv
+gunicorn
+functions-framework
