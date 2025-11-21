@@ -2,37 +2,34 @@
 version: '3.8'
 
 services:
-  # Serviço do Backend (API Flask)
+  # Serviço do Backend (API Flask) - NÃO EXPOSTO DIRETAMENTE
   backend:
     build:
       context: .
       dockerfile: Dockerfile.backend
     container_name: ecoquest-api
     restart: unless-stopped
-    # Em vez de 'env_file', usamos 'environment' para pegar as variáveis
-    # do ambiente de deploy. Você deve configurar essas variáveis na sua
-    # plataforma de hospedagem (Portainer, etc.).
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
-      - API_BASE_URL=${API_BASE_URL}
       - PORT=8080
       - FLASK_ENV=production
-    ports:
-      # Mapeia a porta 8080 do contêiner para a porta 8080 da sua máquina
-      - "8080:8080"
+    # Nenhuma porta exposta ao host. O acesso é feito via Nginx.
+    expose:
+      - "8080"
     networks:
       - ecoquest-net
 
-  # Serviço do Frontend (Site Estático com Nginx)
-  frontend:
+  # Serviço do Reverse Proxy (Nginx) - Ponto de entrada da aplicação
+  proxy:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
-    container_name: ecoquest-site
+      dockerfile: Dockerfile.proxy
+    container_name: ecoquest-proxy
     restart: unless-stopped
     ports:
-      # Mapeia a porta 80 do contêiner para a porta 80 da sua máquina
-      - "80:80"
+      # Mapeia a porta 80 do contêiner para a porta 8080 da sua máquina.
+      # Você pode acessar tudo em http://localhost:8080
+      - "8080:80"
     depends_on:
       - backend
     networks:
