@@ -1,0 +1,30 @@
+# Arquivos de ambiente - NÃO FAÇA COMMIT!
+/.env
+/cloud_function/.env
+
+# Ambientes Virtuais
+.venv/
+venv/
+env/
+
+# Arquivos de cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pastas de IDEs
+.idea/
+.vscode/
+
+# Arquivos de log
+*.log
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos de build e distribuição
+build/
+dist/
+*.egg-info/

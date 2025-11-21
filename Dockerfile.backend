@@ -1,0 +1,30 @@
+# Dockerfile.backend
+# Estágio 1: Construir a imagem da API Flask
+
+# Use uma imagem base oficial do Python
+FROM python:3.10-slim
+
+# Define o diretório de trabalho dentro do contêiner
+WORKDIR /app
+
+# Copie o arquivo de dependências primeiro para aproveitar o cache do Docker
+COPY ./cloud_function/requirements.txt /app/requirements.txt
+
+# Instale as dependências
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie todo o código da API para o diretório de trabalho
+COPY ./cloud_function /app
+
+# Copie o arquivo .env global para dentro do contêiner
+# O Docker Compose pode injetar variáveis de ambiente de forma mais elegante,
+# mas copiar o arquivo é uma abordagem explícita e simples.
+COPY ./.env /app/.env
+
+# Exponha a porta 8080, que é a porta que a API usa
+EXPOSE 8080
+
+# O comando para iniciar a aplicação
+# Usamos o Gunicorn para um servidor de produção mais robusto
+# (vamos adicioná-lo aos requirements.txt)
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "main:app"]

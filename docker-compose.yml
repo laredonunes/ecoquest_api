@@ -1,0 +1,40 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Serviço do Backend (API Flask)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: ecoquest-api
+    restart: unless-stopped
+    # O env_file carrega as variáveis do .env e as injeta no contêiner.
+    # Isso é mais seguro e flexível do que copiar o arquivo.
+    env_file:
+      - .env
+    ports:
+      # Mapeia a porta 8080 do contêiner para a porta 8080 da sua máquina
+      - "8080:8080"
+    networks:
+      - ecoquest-net
+
+  # Serviço do Frontend (Site Estático com Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: ecoquest-site
+    restart: unless-stopped
+    ports:
+      # Mapeia a porta 80 do contêiner para a porta 80 da sua máquina
+      # Se a porta 80 estiver ocupada, você pode mudar para "8081:80", por exemplo.
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ecoquest-net
+
+networks:
+  ecoquest-net:
+    driver: bridge

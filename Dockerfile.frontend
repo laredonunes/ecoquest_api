@@ -1,0 +1,19 @@
+# Dockerfile.frontend
+# Estágio 1: Construir a imagem do Nginx para servir o site estático
+
+# Use uma imagem base leve do Nginx
+FROM nginx:1.25-alpine
+
+# Copie todos os arquivos do site para o diretório padrão do Nginx
+# O contexto do build (./) é a raiz do projeto
+COPY ./index.html /usr/share/nginx/html/
+COPY ./floresta.html /usr/share/nginx/html/
+COPY ./css /usr/share/nginx/html/css
+COPY ./js /usr/share/nginx/html/js
+COPY ./images /usr/share/nginx/html/images
+
+# Exponha a porta 80, que é a porta padrão do Nginx
+EXPOSE 80
+
+# O comando para iniciar o Nginx já está embutido na imagem base
+CMD ["nginx", "-g", "daemon off;"]
