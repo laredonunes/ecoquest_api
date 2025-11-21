@@ -97,7 +97,7 @@
 <body class="light-theme">
 
     <div class="game-viewport">
-        <img src="images/floresta/3.png" alt="Cenário de fundo do Eco Quest" class="hero-background" id="main-hero-background">
+        <img src="images/floresta/fundo/3.png" alt="Cenário de fundo do Eco Quest" class="hero-background" id="main-hero-background">
         <img src="images/titulo.png" alt="Eco Quest" class="game-title">
 
         <div class="game-content-overlay">
@@ -149,14 +149,14 @@
             floatingMenu: document.getElementById('floating-menu'),
             menuOverlay: document.getElementById('menu-overlay'),
             themeSwitcher: document.getElementById('theme-switcher'),
-            homeBtn: document.getElementById('home-btn'), // Novo botão
+            homeBtn: document.getElementById('home-btn'),
             body: document.body
         };
 
         // --- GAME STATE ---
         const gameState = {
             isWaitingForResponse: false,
-            backendGameState: null // game_state vindo da API
+            backendGameState: null
         };
 
         // --- LÓGICA DO MENU E TEMA ---
@@ -182,7 +182,7 @@
         });
 
         allDOMElements.homeBtn.addEventListener('click', () => {
-            window.location.href = '/index.html'; // Redireciona para a página inicial
+            window.location.href = '/index.html';
         });
 
         const savedTheme = localStorage.getItem('theme') || 'light';
@@ -248,10 +248,40 @@
             allDOMElements.actionsLog.appendChild(li);
         }
 
-        function updateSidebar(response) {
+        function updateBackgroundImage(dangerMeter) {
+            let imageName = '3.png'; // Imagem padrão
+            if (dangerMeter >= 90) {
+                imageName = '8.png';
+            } else if (dangerMeter >= 70) {
+                imageName = '7.png';
+            } else if (dangerMeter >= 50) {
+                imageName = '6.png';
+            } else if (dangerMeter >= 30) {
+                imageName = '5.png';
+            }
+            
+            const newImageUrl = `images/floresta/fundo/${imageName}`;
+            
+            // Para evitar piscar, só trocamos se a imagem for diferente
+            if (allDOMElements.mainHeroBackground.src !== newImageUrl) {
+                allDOMElements.mainHeroBackground.style.opacity = 0;
+                setTimeout(() => {
+                    allDOMElements.mainHeroBackground.src = newImageUrl;
+                    allDOMElements.mainHeroBackground.style.opacity = 1;
+                }, 500); // Tempo para a transição de fade-out
+            }
+        }
+
+        function updateUI(response) {
+            const { narrative, game_state } = response;
+            
+            addMessage(narrative.panel_description, 'agent');
+            renderChoices(narrative.inner_voice_options);
+            
+            gameState.backendGameState = game_state;
+            
             const chapter = response.chapter || 'Investigação em curso';
             const op = response.operation || 'Operação desconhecida';
-            const narrative = response.narrative || {};
             const progress = response.progress || '';
 
             allDOMElements.contextDisplay.innerHTML = `
@@ -264,6 +294,9 @@
                 <p>${progress}</p>
                 <p>Perigo: ${(narrative.danger_level || '').toUpperCase()}</p>
             `;
+
+            // Chama a nova função para atualizar o fundo
+            updateBackgroundImage(game_state.danger_meter);
         }
 
         // --- CHAMADAS À API /api/floresta ---
@@ -271,17 +304,8 @@
             try {
                 setInputDisabled(true);
                 addMessage('Iniciando Operação Cinzas da Floresta...', 'system');
-
                 const response = await postData('/api/floresta', { action: 'start' });
-
-                gameState.backendGameState = response.game_state || null;
-
-                const narrative = response.narrative || {};
-                const panel = narrative.panel_description || 'Cena inicial indisponível.';
-                addMessage(panel, 'agent');
-                renderChoices(narrative.inner_voice_options || []);
-                updateSidebar(response);
-
+                updateUI(response);
                 setInputDisabled(false);
             } catch (error) {
                 addMessage(`Erro ao iniciar a história: ${error.message}`, 'system');
@@ -302,15 +326,7 @@
                     game_state: gameState.backendGameState || {}
                 };
                 const response = await postData('/api/floresta', payload);
-
-                gameState.backendGameState = response.game_state || null;
-
-                const narrative = response.narrative || {};
-                const panel = narrative.panel_description || 'Sem descrição para esta cena.';
-                addMessage(panel, 'agent');
-                renderChoices(narrative.inner_voice_options || []);
-                updateSidebar(response);
-
+                updateUI(response);
                 setInputDisabled(false);
             } catch (error) {
                 addMessage(`Erro ao continuar a história: ${error.message}`, 'system');
@@ -353,10 +369,7 @@
                     allDOMElements.cutsceneScreen.style.opacity = 0;
                     setTimeout(async () => {
                         allDOMElements.cutsceneScreen.style.display = 'none';
-                        allDOMElements.mainHeroBackground.src = 'images/floresta/3.png';
                         allDOMElements.gameContentOverlay.style.opacity = 1;
-
-                        // Em vez de pergunta fixa, inicia o jogo pela API
                         await startGame();
                     }, 1000);
                     return;
