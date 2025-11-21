@@ -1,24 +1,35 @@
 # EcoQuest
 
-EcoQuest is a web application that encourages and rewards sustainable practices.
+EcoQuest é um projeto dividido em duas partes principais: um site estático e uma Cloud Function.
 
-## Running the application
+## Estrutura do Projeto
 
-To run the application, you need to have Python and Flask installed.
+- **/site**: Contém o front-end da aplicação, desenvolvido com HTML, CSS e JavaScript.
+- **/cloud_function**: Contém o back-end, uma função serverless pronta para ser implantada em provedores de nuvem como Google Cloud, AWS ou Azure.
 
-1. Clone the repository:
-```bash
-git clone https://github.com/your-username/ecoquest.git
-```
+## Como Executar
 
-2. Install the dependencies:
-```bash
-pip install -r requirements.txt
-```
+### Site Estático
 
-3. Run the application:
-```bash
-flask run
-```
+O site pode ser visualizado diretamente no seu navegador.
 
-The application will be available at http://127.0.0.1:5000.
+1.  Navegue até o diretório `site`.
+2.  Abra o arquivo `index.html` em seu navegador de preferência.
+
+Para publicar o site, você pode usar serviços de hospedagem de sites estáticos como GitHub Pages, Netlify ou Vercel, apontando para o diretório `site`.
+
+### Cloud Function
+
+A função Python pode ser testada localmente e implantada na nuvem.
+
+1.  Navegue até o diretório `cloud_function`.
+2.  Crie um ambiente virtual:
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # No Windows, use `venv\Scripts\activate`
+    ```
+3.  Instale as dependências:
+    ```bash
+    pip install -r requirements.txt
+    ```
+4.  Para testar ou implantar, siga a documentação do seu provedor de nuvem (Google Cloud Functions, AWS Lambda, etc.). O ponto de entrada da função está em `main.py`.
