@@ -260,7 +260,14 @@ if __name__ == '__main__':
     print(
         f'   curl -X POST http://localhost:{port}/api/mar -H "Content-Type: application/json" -d \'{{"action": "start"}}\'')
     print()
-    print('⏹️  Para parar: Ctrl+C')
+    print('💡 Teste a saúde da API:')
+    print('   curl http://localhost:8080/health')
+    print('💡 Inicie um cenário (ex: Operação Cinzas):')
+    print('   curl -X POST http://localhost:8080/api/floresta \\')
+    print('     -H "Content-Type: application/json" \\')
+    print('     -d \'{"action": "start"}\'')
+    print()
+    print('⏹️ Para parar: Ctrl+C')
     print('=' * 80)
     print()
 
