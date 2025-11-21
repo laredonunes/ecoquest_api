@@ -9,10 +9,14 @@ services:
       dockerfile: Dockerfile.backend
     container_name: ecoquest-api
     restart: unless-stopped
-    # O env_file carrega as variáveis do .env e as injeta no contêiner.
-    # Isso é mais seguro e flexível do que copiar o arquivo.
-    env_file:
-      - .env
+    # Em vez de 'env_file', usamos 'environment' para pegar as variáveis
+    # do ambiente de deploy. Você deve configurar essas variáveis na sua
+    # plataforma de hospedagem (Portainer, etc.).
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - API_BASE_URL=${API_BASE_URL}
+      - PORT=8080
+      - FLASK_ENV=production
     ports:
       # Mapeia a porta 8080 do contêiner para a porta 8080 da sua máquina
       - "8080:8080"
@@ -28,7 +32,6 @@ services:
     restart: unless-stopped
     ports:
       # Mapeia a porta 80 do contêiner para a porta 80 da sua máquina
-      # Se a porta 80 estiver ocupada, você pode mudar para "8081:80", por exemplo.
       - "80:80"
     depends_on:
       - backend
