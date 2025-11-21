@@ -58,7 +58,11 @@
         .menu-overlay.open { opacity: 1; visibility: visible; }
 
         .sidebar-section { background: rgba(0,0,0,0.05); padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); }
-        .sidebar-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--primary); margin-bottom: var(--space-md); }
+        .sidebar-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--primary); margin-bottom: var(--space-md); cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+        .sidebar-title::after { content: '▼'; font-size: 12px; transition: transform var(--transition-base); }
+        .sidebar-title.collapsed::after { transform: rotate(-90deg); }
+        .collapsible-content { max-height: 500px; overflow: hidden; transition: max-height 0.5s ease-in-out, padding 0.5s ease; }
+        .collapsible-content.collapsed { max-height: 0; padding-top: 0; padding-bottom: 0; margin-top: -16px; }
         #context-display, #actions-log { font-size: var(--font-size-sm); max-height: 200px; overflow-y: auto; }
         #actions-log ul { list-style-position: inside; padding-left: var(--space-sm); }
         .btn.theme-switcher-btn, .btn.home-btn { margin-top: auto; background: none; border: 1px solid var(--text-menu); color: var(--text-menu); }
@@ -119,9 +123,24 @@
         <div class="menu-toggle" id="menu-toggle"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
         <div class="menu-overlay" id="menu-overlay"></div>
         <aside class="floating-menu" id="floating-menu">
-            <div class="sidebar-section"><h2 class="sidebar-title">🌍 Contexto</h2><div id="context-display"><p>Aguardando...</p></div></div>
-            <div class="sidebar-section"><h2 class="sidebar-title">📝 Ações</h2><div id="actions-log"><ul></ul></div></div>
-            <div class="sidebar-section"><h2 class="sidebar-title">🏆 Progresso</h2><div id="progress-display"><p>0%</p></div></div>
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">🌍 Contexto</h2>
+                <div class="collapsible-content">
+                    <div id="context-display"><p>Aguardando...</p></div>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">📝 Ações</h2>
+                <div class="collapsible-content">
+                    <div id="actions-log"><ul></ul></div>
+                </div>
+            </div>
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">🏆 Progresso</h2>
+                <div class="collapsible-content">
+                    <div id="progress-display"><p>0%</p></div>
+                </div>
+            </div>
             
             <button class="btn home-btn" id="home-btn">🏠 Voltar ao Início</button>
             <button class="btn theme-switcher-btn" id="theme-switcher">☀️/🌙 Tema</button>
@@ -187,6 +206,15 @@
 
         const savedTheme = localStorage.getItem('theme') || 'light';
         setTheme(savedTheme);
+
+        // --- LÓGICA DO MENU COLAPSÁVEL ---
+        document.querySelectorAll('.sidebar-title').forEach(header => {
+            header.addEventListener('click', () => {
+                const content = header.nextElementSibling;
+                header.classList.toggle('collapsed');
+                content.classList.toggle('collapsed');
+            });
+        });
 
         // --- API & UI FUNCTIONS ---
         async function postData(url = '', data = {}) {
@@ -262,14 +290,13 @@
             
             const newImageUrl = `images/floresta/fundo/${imageName}`;
             
-            // Para evitar piscar, só trocamos se a imagem for diferente
-            if (allDOMElements.mainHeroBackground.src !== newImageUrl) {
-                allDOMElements.mainHeroBackground.style.opacity = 0;
-                setTimeout(() => {
-                    allDOMElements.mainHeroBackground.src = newImageUrl;
-                    allDOMElements.mainHeroBackground.style.opacity = 1;
-                }, 500); // Tempo para a transição de fade-out
-            }
+            if (allDOMElements.mainHeroBackground.src.endsWith(newImageUrl)) return;
+
+            allDOMElements.mainHeroBackground.style.opacity = 0;
+            setTimeout(() => {
+                allDOMElements.mainHeroBackground.src = newImageUrl;
+                allDOMElements.mainHeroBackground.style.opacity = 1;
+            }, 500);
         }
 
         function updateUI(response) {
@@ -295,7 +322,6 @@
                 <p>Perigo: ${(narrative.danger_level || '').toUpperCase()}</p>
             `;
 
-            // Chama a nova função para atualizar o fundo
             updateBackgroundImage(game_state.danger_meter);
         }
 
