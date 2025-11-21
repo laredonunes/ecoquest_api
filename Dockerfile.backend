@@ -11,10 +11,10 @@ COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copie os arquivos Python para o diretório raiz do app
-COPY main.py /app/
-COPY game_master_groq.py /app/
-COPY game_master_mangue.py /app/
-COPY game_master_mar.py /app/
+COPY cloud_function/main.py /app/
+COPY cloud_function/floresta/mangue.py /app/
+COPY cloud_function/floresta/mar.py /app/
+COPY cloud_function/floresta/mar.py /app/
 
 # Exponha a porta
 EXPOSE 8080
