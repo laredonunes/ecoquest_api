@@ -1,28 +1,31 @@
-# EcoQuest - API de RPG Ambiental
+# EcoQuest - API de RPG Ambiental com Docker
 
-EcoQuest é uma plataforma de jogos investigativos em formato de RPG de texto, onde você assume o papel de um agente ambiental para solucionar crimes na fauna e flora brasileira. A aplicação é construída como uma API RESTful usando Flask, com a narrativa gerada dinamicamente pela API da Groq (usando o modelo Llama 3).
+EcoQuest é uma plataforma de jogos investigativos em formato de RPG de texto, onde você assume o papel de um agente ambiental para solucionar crimes na fauna e flora brasileira. A aplicação é totalmente containerizada usando Docker e Docker Compose.
 
-## Estrutura do Projeto
+A arquitetura utiliza um **Nginx como Reverse Proxy**, que serve tanto o site estático (front-end) quanto a API RESTful (back-end), garantindo uma implantação robusta e escalável.
 
-- **/cloud_function**: Contém a aplicação Flask que serve a API.
-  - `main.py`: Ponto de entrada da API. Define as rotas, cenários e gerencia as requisições.
-  - `/floresta`: Contém a lógica específica de cada cenário de jogo.
-    - `floresta.py`: Handler para o cenário "Operação Cinzas da Floresta".
-    - `mangue.py`: Handler para o cenário "Guardiões do Mangue".
-    - `mar.py`: Handler para o cenário "Redes da Sobrevivência".
-  - `.env`: Arquivo para configurar suas variáveis de ambiente (não versionado).
-  - `requirements.txt`: Dependências do projeto.
+## Arquitetura
 
-- **/site**: (Opcional) Contém um front-end estático que pode ser usado para interagir com a API.
+O projeto é orquestrado pelo `docker-compose.yml` e dividido em dois serviços principais:
 
-## Como Configurar e Executar
+1.  **`proxy` (Nginx):**
+    - É o único ponto de entrada da aplicação, exposto na porta `8080`.
+    - Serve os arquivos estáticos do site (`index.html`, `floresta.html`, CSS, JS).
+    - Atua como **Reverse Proxy**: todas as requisições que começam com `/api/` são redirecionadas internamente para o serviço `backend`.
+
+2.  **`backend` (Flask + Gunicorn):**
+    - Roda a API Flask, que contém a lógica dos cenários de jogo.
+    - **Não é exposto diretamente ao exterior**. Só o serviço `proxy` pode se comunicar com ele, o que aumenta a segurança.
+    - Utiliza a API da Groq para gerar a narrativa dinâmica dos jogos.
+
+## Como Executar
 
 ### 1. Pré-requisitos
 
-- Python 3.9+
-- Uma chave de API da [Groq](https://console.groq.com/keys)
+- Docker e Docker Compose instalados.
+- Uma chave de API da [Groq](https://console.groq.com/keys).
 
-### 2. Instalação
+### 2. Configuração
 
 1.  **Clone o repositório:**
     ```bash
@@ -30,81 +33,43 @@ EcoQuest é uma plataforma de jogos investigativos em formato de RPG de texto, o
     cd ecoquest_cloufunction
     ```
 
-2.  **Crie e ative um ambiente virtual:**
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate  # No Windows: .venv\Scripts\activate
-    ```
-
-3.  **Instale as dependências:**
-    ```bash
-    pip install -r cloud_function/requirements.txt
-    ```
-
-4.  **Configure sua chave de API:**
-    - Renomeie o arquivo `cloud_function/.env.example` para `cloud_function/.env` (se houver um example) ou crie um novo.
-    - Adicione sua chave da Groq ao arquivo `.env`:
+2.  **Crie seu arquivo de ambiente:**
+    - Na raiz do projeto, copie o arquivo de exemplo `.env.example` para um novo arquivo chamado `.env`.
+      ```bash
+      cp .env.example .env
       ```
-      GROQ_API_KEY="gsk_SUA_CHAVE_SECRETA_AQUI"
-      ```
+    - Abra o arquivo `.env` e **insira sua chave da API da Groq** na variável `GROQ_API_KEY`.
 
-### 3. Executando o Servidor Local
+### 3. Executando a Aplicação
 
-Com o ambiente ativado, inicie o servidor Flask:
+Com o Docker em execução, inicie todo o ambiente com um único comando:
 
 ```bash
-python cloud_function/main.py
+docker-compose up --build
 ```
 
-O servidor estará rodando em `http://localhost:8080`.
+- `--build`: Garante que as imagens Docker serão reconstruídas se houver alguma alteração nos `Dockerfiles`.
+- Para parar a aplicação, pressione `Ctrl+C` no terminal. Para remover os contêineres, use `docker-compose down`.
 
-## Como Usar a API
+### 4. Acessando a Aplicação
 
-A API é projetada para ser stateful do lado do cliente. O cliente (seu front-end ou ferramenta de API) é responsável por receber o `game_state` do servidor e enviá-lo de volta a cada turno.
+Após a inicialização, tudo estará disponível em `http://localhost:8080`:
 
-### Endpoints Principais
+- **Site Principal:** `http://localhost:8080` ou `http://localhost:8080/index.html`
+- **Cenário da Floresta:** `http://localhost:8080/floresta.html`
 
-- `GET /`: Retorna a documentação da API com os cenários disponíveis.
-- `GET /health`: Verifica o status da aplicação.
-- `GET /api/cenarios`: Lista os detalhes de todos os cenários jogáveis.
+O front-end já está configurado para se comunicar com a API através do Nginx, então tudo deve funcionar de forma integrada.
 
-### Fluxo de Jogo (Exemplo com o cenário "floresta")
+## Fluxo da API
 
-1.  **Iniciar o jogo:**
-    Envie uma requisição POST para o endpoint do cenário com a ação "start".
+A comunicação entre o front-end e o back-end segue um fluxo simples:
 
-    ```bash
-    curl -X POST http://localhost:8080/api/floresta \
-         -H "Content-Type: application/json" \
-         -d '{"action": "start"}'
-    ```
+1.  **Iniciar um Cenário:**
+    - O cliente envia um `POST` para `/api/<nome-do-cenario>`.
+    - Corpo da requisição: `{"action": "start"}`.
+    - O servidor responde com a primeira cena e o estado inicial do jogo (`game_state`).
 
-    A resposta conterá a primeira cena (`narrative`) e o estado inicial do jogo (`game_state`).
-
-2.  **Continuar o jogo:**
-    Para o próximo turno, envie a decisão do jogador e o `game_state` que você recebeu.
-
-    ```bash
-    curl -X POST http://localhost:8080/api/floresta \
-         -H "Content-Type: application/json" \
-         -d '{
-               "action": "continue",
-               "player_decision": "Analisar as cinzas de perto",
-               "game_state": { ... o objeto game_state recebido anteriormente ... }
-             }'
-    ```
-
-    A resposta trará a nova cena e o `game_state` atualizado. Repita este passo para progredir na história.
-
-## Cenários Disponíveis
-
-- **🔥 Operação Cinzas da Floresta**: Investigue um incêndio criminoso que esconde uma operação de desmatamento ilegal.
-- **🌊 Guardiões do Mangue**: Lute contra a supressão de áreas de mangue com base em documentos falsificados.
-- **🐟 Redes da Sobrevivência**: Medie o conflito entre pesca ilegal em larga escala e a subsistência de comunidades locais.
-
-Flask
-flask-cors
-requests
-python-dotenv
-gunicorn
-functions-framework
+2.  **Continuar a História:**
+    - O cliente envia um `POST` para o mesmo endpoint.
+    - Corpo da requisição: `{"action": "continue", "player_decision": "...", "game_state": {...}}`.
+    - O servidor usa o `game_state` para dar continuidade à narrativa e responde com a nova cena e o estado atualizado.

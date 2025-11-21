@@ -57,11 +57,12 @@
         .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; opacity: 0; visibility: hidden; transition: opacity var(--transition-base), visibility var(--transition-base); }
         .menu-overlay.open { opacity: 1; visibility: visible; }
 
-        .sidebar-section { background: rgba(0,0,0,0.05); padding: var(--space-md); border-radius: var(--radius-md); }
+        .sidebar-section { background: rgba(0,0,0,0.05); padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: var(--space-md); }
         .sidebar-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--primary); margin-bottom: var(--space-md); }
         #context-display, #actions-log { font-size: var(--font-size-sm); max-height: 200px; overflow-y: auto; }
         #actions-log ul { list-style-position: inside; padding-left: var(--space-sm); }
-        .theme-switcher-btn { margin-top: auto; background: none; border: 1px solid var(--text-menu); color: var(--text-menu); }
+        .btn.theme-switcher-btn, .btn.home-btn { margin-top: auto; background: none; border: 1px solid var(--text-menu); color: var(--text-menu); }
+        .btn.home-btn { margin-top: var(--space-md); }
 
         .interaction-panel { max-width: 900px; width: 90%; background: var(--bg-panel); padding: var(--space-xl); border-radius: var(--radius-md); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
 
@@ -121,6 +122,8 @@
             <div class="sidebar-section"><h2 class="sidebar-title">🌍 Contexto</h2><div id="context-display"><p>Aguardando...</p></div></div>
             <div class="sidebar-section"><h2 class="sidebar-title">📝 Ações</h2><div id="actions-log"><ul></ul></div></div>
             <div class="sidebar-section"><h2 class="sidebar-title">🏆 Progresso</h2><div id="progress-display"><p>0%</p></div></div>
+            
+            <button class="btn home-btn" id="home-btn">🏠 Voltar ao Início</button>
             <button class="btn theme-switcher-btn" id="theme-switcher">☀️/🌙 Tema</button>
         </aside>
     </div>
@@ -146,6 +149,7 @@
             floatingMenu: document.getElementById('floating-menu'),
             menuOverlay: document.getElementById('menu-overlay'),
             themeSwitcher: document.getElementById('theme-switcher'),
+            homeBtn: document.getElementById('home-btn'), // Novo botão
             body: document.body
         };
 
@@ -170,11 +174,15 @@
 
         allDOMElements.menuToggle.addEventListener('click', toggleMenu);
         allDOMElements.menuOverlay.addEventListener('click', toggleMenu);
-
+    
         allDOMElements.themeSwitcher.addEventListener('click', () => {
             const currentTheme = localStorage.getItem('theme') || 'light';
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
             setTheme(newTheme);
+        });
+
+        allDOMElements.homeBtn.addEventListener('click', () => {
+            window.location.href = '/index.html'; // Redireciona para a página inicial
         });
 
         const savedTheme = localStorage.getItem('theme') || 'light';
