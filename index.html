@@ -57,9 +57,12 @@
         .menu-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; opacity: 0; visibility: hidden; transition: opacity var(--transition-base), visibility var(--transition-base); }
         .menu-overlay.open { opacity: 1; visibility: visible; }
         
-        .sidebar-section { background: rgba(0,0,0,0.05); padding: var(--space-md); border-radius: var(--radius-md); }
+        .sidebar-section { background: rgba(0,0,0,0.05); padding: var(--space-md); border-radius: var(--radius-md); margin-bottom: 16px; }
         .sidebar-title { font-size: var(--font-size-lg); font-weight: 600; color: var(--primary); margin-bottom: var(--space-md); }
         .theme-switcher-btn { margin-top: auto; background: none; border: 1px solid var(--text-menu); color: var(--text-menu); }
+        #qrcode-container { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px; background: rgba(255, 255, 255, 0.8); border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+        #qrcode-container p { font-size: var(--font-size-sm); color: var(--text-secondary); font-weight: 500; }
+        #qrcode-container canvas { border-radius: 4px; }
 
         .interaction-panel { max-width: 900px; width: 90%; background: var(--bg-panel); padding: var(--space-xl); border-radius: var(--radius-md); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
         #start-screen p { color: var(--text-panel); text-shadow: var(--shadow-text); }
@@ -101,21 +104,29 @@
             </div>
         </div>
 
-        <!-- MENU FLUTUANTE E OVERLAY (RE-ADICIONADOS) -->
+        <!-- MENU FLUTUANTE E OVERLAY -->
         <div class="menu-toggle" id="menu-toggle"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
         <div class="menu-overlay" id="menu-overlay"></div>
         <aside class="floating-menu" id="floating-menu">
             <div class="sidebar-section">
                 <h2 class="sidebar-title">Opções</h2>
+                <button class="btn theme-switcher-btn" id="theme-switcher">☀️/🌙 Alterar Tema</button>
             </div>
-            <button class="btn theme-switcher-btn" id="theme-switcher">☀️/🌙 Alterar Tema</button>
+            <div class="sidebar-section">
+                <h2 class="sidebar-title">Compartilhar</h2>
+                <div id="qrcode-container">
+                    <p>Escaneie para compartilhar</p>
+                    <div id="qrcode"></div>
+                </div>
+            </div>
         </aside>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="js/config.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // --- LÓGICA DO MENU E TEMA (RE-ADICIONADA) ---
+            // --- LÓGICA DO MENU E TEMA ---
             const menuToggle = document.getElementById('menu-toggle');
             const floatingMenu = document.getElementById('floating-menu');
             const menuOverlay = document.getElementById('menu-overlay');
@@ -132,6 +143,7 @@
                 body.classList.remove('light-theme', 'dark-theme');
                 body.classList.add(theme + '-theme');
                 localStorage.setItem('theme', theme);
+                updateQRCodeColors(theme); // Atualiza o QR Code quando o tema muda
             }
 
             menuToggle.addEventListener('click', toggleMenu);
@@ -142,9 +154,6 @@
                 const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                 setTheme(newTheme);
             });
-
-            const savedTheme = localStorage.getItem('theme') || 'light';
-            setTheme(savedTheme);
 
             // --- LÓGICA DE SELEÇÃO DE BIOMA ---
             const biomeCards = document.querySelectorAll('.biome-card');
@@ -164,9 +173,42 @@
                     return;
                 }
                 
-                // Redireciona para a página correta com base no bioma selecionado
                 window.location.href = `${selectedBiome}.html`;
             });
+
+            // --- LÓGICA DO QR CODE ---
+            let qrcode = null;
+            function generateQRCode(theme) {
+                const pageUrl = window.location.href;
+                const isDark = theme === 'dark';
+                const qrCodeColors = {
+                    dark: isDark ? "#FFFFFF" : getComputedStyle(document.documentElement).getPropertyValue('--primary').trim(),
+                    light: isDark ? "#121212" : "#FFFFFF"
+                };
+
+                if (qrcode) {
+                    qrcode.clear();
+                    qrcode.makeCode(pageUrl);
+                } else {
+                    qrcode = new QRCode(document.getElementById("qrcode"), {
+                        text: pageUrl,
+                        width: 128,
+                        height: 128,
+                        colorDark : qrCodeColors.dark,
+                        colorLight : qrCodeColors.light,
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                }
+            }
+            
+            function updateQRCodeColors(theme) {
+                // A biblioteca não permite mudar cores dinamicamente, então geramos um novo
+                document.getElementById("qrcode").innerHTML = "";
+                generateQRCode(theme);
+            }
+
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            setTheme(savedTheme); // Isso também vai gerar o QR Code inicial com a cor certa
         });
     </script>
 
