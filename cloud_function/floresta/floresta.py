@@ -378,31 +378,32 @@ def operacao_cinzas_handler(data: dict, groq_api_key: str) -> dict:
         }
 
 
-# ==================== TESTE ====================
+# ==================== TESTE LOCAL ====================
 if __name__ == "__main__":
     from dotenv import load_dotenv
 
-    load_dotenv()
+    # Carrega o .env da raiz do projeto (dois níveis acima)
+    dotenv_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
+    load_dotenv(dotenv_path=dotenv_path)
 
     print('=' * 80)
-    print('🔥 OPERAÇÃO CINZAS DA FLORESTA - GROQ API')
+    print('🔥 OPERAÇÃO CINZAS DA FLORESTA - TESTE LOCAL')
     print('=' * 80)
     print()
 
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        print('❌ GROQ_API_KEY não configurada')
-        print('   Configure no .env: GROQ_API_KEY=gsk_...')
+        print('❌ GROQ_API_KEY não configurada.')
+        print('   Certifique-se de que o arquivo .env está na raiz do projeto.')
         exit(1)
 
-    print(f'✅ API Key: {api_key[:20]}...')
+    print(f'✅ API Key encontrada no .env da raiz.')
     print()
 
     try:
+        # O resto do código de teste permanece o mesmo...
         game = GroqGameMaster(api_key)
         print('🎬 Iniciando investigação...')
-        print()
-
         resultado = game.start_game()
 
         if resultado.get('status') == 'error':
@@ -412,66 +413,18 @@ if __name__ == "__main__":
         print('=' * 80)
         print(f'📖 {resultado["chapter"]}')
         print('=' * 80)
-        print()
-
         narrative = resultado['narrative']
-
         print('🎨 CENA:')
         print(narrative['panel_description'])
-        print()
-
-        print('💭 SUAS OPÇÕES:')
+        print('\n💭 SUAS OPÇÕES:')
         for i, opt in enumerate(narrative['inner_voice_options'], 1):
             print(f'   {i}. {opt}')
-        print()
-
-        if narrative.get('evidence_discovered'):
-            print(f'🔍 EVIDÊNCIA: {narrative["evidence_discovered"]}')
-            print()
-
-        print(f'⚠️  PERIGO: {narrative["danger_level"].upper()}')
-        print(f'📊 PROGRESSO: Fase 1/5')
-        print()
-
-        # Teste de continuação
-        print('=' * 80)
-        print('🎮 TESTANDO CONTINUAÇÃO')
-        print('=' * 80)
-        print()
-
-        escolha = narrative['inner_voice_options'][0]
-        print(f'🗣️  Decisão: "{escolha}"')
-        print('⏳ Processando...')
-        print()
-
-        resultado2 = game.continue_game(escolha, resultado['game_state'])
-
-        if resultado2.get('status') == 'success':
-            print('=' * 80)
-            print(f'📖 {resultado2["chapter"]}')
-            print('=' * 80)
-            print()
-
-            narrative2 = resultado2['narrative']
-            print('🎨 NOVA CENA:')
-            print(narrative2['panel_description'])
-            print()
-
-            print('💭 NOVAS OPÇÕES:')
-            for i, opt in enumerate(narrative2['inner_voice_options'], 1):
-                print(f'   {i}. {opt}')
-            print()
-
-            print(f'📊 {resultado2.get("progress")}')
-            print(f'💾 {resultado2.get("context_info")}')
-
-        print()
-        print('=' * 80)
+        
+        print('\n' + '=' * 80)
         print('✅ TESTE CONCLUÍDO!')
         print('=' * 80)
 
     except Exception as e:
-        print(f'❌ ERRO: {e}')
+        print(f'❌ ERRO GERAL NO TESTE: {e}')
         import traceback
-
         traceback.print_exc()

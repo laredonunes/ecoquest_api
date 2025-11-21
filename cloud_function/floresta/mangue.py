@@ -271,3 +271,53 @@ def mangue_handler(data: dict, groq_api_key: str) -> dict:
         return game_master.continue_game(data.get('player_decision', ''), data.get('game_state', {}))
     else:
         return {"status": "error", "error": "Ação inválida"}
+
+# ==================== TESTE LOCAL ====================
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+
+    # Carrega o .env da raiz do projeto (dois níveis acima)
+    dotenv_path = os.path.join(os.path.dirname(__file__), '..', '..', '.env')
+    load_dotenv(dotenv_path=dotenv_path)
+
+    print('=' * 80)
+    print('🌊 GUARDIÕES DO MANGUE - TESTE LOCAL')
+    print('=' * 80)
+    print()
+
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        print('❌ GROQ_API_KEY não configurada.')
+        print('   Certifique-se de que o arquivo .env está na raiz do projeto.')
+        exit(1)
+
+    print(f'✅ API Key encontrada no .env da raiz.')
+    print()
+
+    try:
+        game = MangueGameMaster(api_key)
+        print('🎬 Iniciando investigação...')
+        resultado = game.start_game()
+
+        if resultado.get('status') == 'error':
+            print(f'❌ ERRO: {resultado.get("error")}')
+            exit(1)
+
+        print('=' * 80)
+        print(f'📖 {resultado["chapter"]}')
+        print('=' * 80)
+        narrative = resultado['narrative']
+        print('🎨 CENA:')
+        print(narrative['panel_description'])
+        print('\n💭 SUAS OPÇÕES:')
+        for i, opt in enumerate(narrative['inner_voice_options'], 1):
+            print(f'   {i}. {opt}')
+        
+        print('\n' + '=' * 80)
+        print('✅ TESTE CONCLUÍDO!')
+        print('=' * 80)
+
+    except Exception as e:
+        print(f'❌ ERRO GERAL NO TESTE: {e}')
+        import traceback
+        traceback.print_exc()
