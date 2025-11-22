@@ -1,12 +1,18 @@
 
+<p align="center">
+  <img src="assets/9.png" width="45%" />
+</p>
 
+---
 # 🌱 EcoQuest — RPG investigativo ambiental inspirado pela COP30
 
 **EcoQuest** é uma experiência narrativa interativa onde você assume o papel de um agente ambiental responsável por proteger biomas brasileiros.
 Cada escolha altera a história — e o futuro da natureza.
 
 👉 **Demo Online:** [http://imersao_dev_alura2025.igniscomputo.com/](http://imersao_dev_alura2025.igniscomputo.com/)
+
 🎥 **Vídeo Demonstrativo:** [https://youtu.be/3--hmndH-10](https://youtu.be/3--hmndH-10)
+
 📦 **Repositório:** [https://github.com/laredonunes/ecoquest_api](https://github.com/laredonunes/ecoquest_api)
 
 ---
@@ -41,21 +47,33 @@ EcoQuest foi pensado para ser acolhedor, bonito e fácil de jogar.
 Construído com **HTML, CSS e JavaScript puro**, oferece:
 
 * layout responsivo
+<p float="left">
+  <img src="assets/1.png" width="35%" />
+  <img src="assets/5.png" width="25%" />
+  <img src="assets/6.png" width="25%" />
+</p>
 * experiência mobile e desktop
+<p float="left">
+  <img src="assets/1.png" width="35%" />
+  <img src="assets/5.png" width="25%" />  
+</p>
 * modo claro/escuro
+<p float="left">
+  <img src="assets/3.png" width="35%" />
+  <img src="assets/4.png" width="35%" />
+</p>
 * menu lateral com QR Code para compartilhar
+<p float="left">
+  <img src="assets/3.png" width="35%" />  
+</p>
 * botões de decisão simples e diretos
+<p float="left">
+  <img src="assets/7.png" width="65%" />  
+</p>
 * identidade visual lúdica e ilustrada
-
-### 🖼️ Capturas de Tela 
-
-![Tela inicial](assets/01.png)
-
-![Tela de escolhas](assets/02.png)
-
-![Tela de escolhas](assets/03.png)
-
-![Tela de escolhas](assets/04.png)
+<p float="left">
+  <img src="assets/8.png" width="65%" />  
+</p>
 
 
 ---
