@@ -8,7 +8,6 @@ from floresta.mangue import mangue_handler
 from floresta.mar import mar_handler
 import logging
 from datetime import datetime
-from functools import wraps
 
 # Carrega as variáveis de ambiente do arquivo .env na raiz do projeto
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
@@ -28,73 +27,6 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     logger.error("GROQ_API_KEY não configurada!")
     raise ValueError("GROQ_API_KEY não encontrada no arquivo .env")
-
-
-# ==================== RATE LIMITER ====================
-class RequestThrottler:
-    """Controla intervalo mínimo entre requisições por IP"""
-
-    def __init__(self, min_interval_seconds=2):
-        self.last_request_time = {}  # {ip: timestamp}
-        self.min_interval = min_interval_seconds
-        logger.info(f'🛡️ Rate Limiter ativado: mínimo {self.min_interval}s entre requisições')
-
-    def get_client_ip(self):
-        """Obtém o IP real do cliente"""
-        if request.headers.get('X-Forwarded-For'):
-            return request.headers.get('X-Forwarded-For').split(',')[0].strip()
-        elif request.headers.get('X-Real-IP'):
-            return request.headers.get('X-Real-IP')
-        return request.remote_addr
-
-    def check_and_update(self, ip: str) -> tuple[bool, float]:
-        """
-        Verifica se o IP pode fazer requisição e atualiza timestamp
-
-        Returns:
-            (permitido: bool, tempo_restante: float)
-        """
-        now = datetime.now()
-
-        if ip in self.last_request_time:
-            elapsed = (now - self.last_request_time[ip]).total_seconds()
-
-            if elapsed < self.min_interval:
-                remaining = self.min_interval - elapsed
-                return False, remaining
-
-        # Atualiza timestamp
-        self.last_request_time[ip] = now
-        return True, 0
-
-
-# Instância global
-throttler = RequestThrottler(min_interval_seconds=2)
-
-
-def rate_limit(f):
-    """Decorator para bloquear requisições com menos de 2 segundos"""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        ip = throttler.get_client_ip()
-
-        allowed, time_remaining = throttler.check_and_update(ip)
-
-        if not allowed:
-            logger.warning(f"⏳ IP {ip} bloqueado: tentou requisição em menos de 2s ({time_remaining:.1f}s restantes)")
-            return jsonify({
-                "status": "error",
-                "error": f"Aguarde {int(time_remaining) + 1} segundos antes de fazer outra requisição.",
-                "code": "TOO_MANY_REQUESTS",
-                "retry_after": int(time_remaining) + 1
-            }), 429
-
-        logger.info(f"✅ IP {ip}: requisição permitida")
-        return f(*args, **kwargs)
-
-    return decorated_function
-
 
 # ==================== CENÁRIOS DISPONÍVEIS ====================
 SCENARIOS = {
@@ -128,10 +60,6 @@ def home():
         "nome": "ECO QUEST - API de RPG Ambiental",
         "versao": "2.0.0",
         "descricao": "Plataforma de jogos investigativos sobre crimes ambientais",
-        "rate_limiting": {
-            "min_interval_seconds": throttler.min_interval,
-            "descricao": "Intervalo mínimo de 2 segundos entre requisições por IP"
-        },
         "cenarios": {
             key: {
                 "titulo": info["titulo"],
@@ -172,11 +100,7 @@ def health():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "groq_api_configured": bool(GROQ_API_KEY),
-        "cenarios_disponiveis": len(SCENARIOS),
-        "rate_limiting": {
-            "active": True,
-            "min_interval_seconds": throttler.min_interval
-        }
+        "cenarios_disponiveis": len(SCENARIOS)
     }), 200
 
 
@@ -199,12 +123,11 @@ def list_scenarios():
     }), 200
 
 
-# ==================== ROTAS DOS CENÁRIOS (COM RATE LIMIT) ====================
+# ==================== ROTAS DOS CENÁRIOS ====================
 
 def create_scenario_route(scenario_key: str):
     """Factory para criar rotas de cenários"""
 
-    @rate_limit  # 🛡️ BLOQUEIA REQUISIÇÕES COM MENOS DE 2 SEGUNDOS
     def scenario_endpoint():
         try:
             if not request.is_json:
@@ -323,7 +246,6 @@ if __name__ == '__main__':
     print()
     print(f'🚀 Servidor na porta {port}')
     print(f'🔑 API Groq: {"✅" if GROQ_API_KEY else "❌"}')
-    print(f'🛡️ Rate Limiting: ✅ (mínimo {throttler.min_interval}s entre requisições)')
     print()
     print('📋 CENÁRIOS DISPONÍVEIS:')
     for key, info in SCENARIOS.items():
@@ -331,9 +253,19 @@ if __name__ == '__main__':
         print(f'      → POST /api/{key}')
     print()
     print('💡 TESTES RÁPIDOS:')
-    print(f'   curl http://localhost:{port}/health')
     print(
         f'   curl -X POST http://localhost:{port}/api/floresta -H "Content-Type: application/json" -d \'{{"action": "start"}}\'')
+    print(
+        f'   curl -X POST http://localhost:{port}/api/mangue -H "Content-Type: application/json" -d \'{{"action": "start"}}\'')
+    print(
+        f'   curl -X POST http://localhost:{port}/api/mar -H "Content-Type: application/json" -d \'{{"action": "start"}}\'')
+    print()
+    print('💡 Teste a saúde da API:')
+    print('   curl http://localhost:8080/health')
+    print('💡 Inicie um cenário (ex: Operação Cinzas):')
+    print('   curl -X POST http://localhost:8080/api/floresta \\')
+    print('     -H "Content-Type: application/json" \\')
+    print('     -d \'{"action": "start"}\'')
     print()
     print('⏹️ Para parar: Ctrl+C')
     print('=' * 80)
