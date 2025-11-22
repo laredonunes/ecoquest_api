@@ -6,7 +6,7 @@
     <title>Eco Quest - Redes da Sobrevivência</title>
     <link rel="icon" type="image/png" href="images/flavicon.png">
     <style>
-        /* O CSS é idêntico ao de floresta.html */
+        /* CSS anterior mantido... */
         :root {
             --primary: #1A5D1A; --primary-hover: #144514; --secondary: #F5F5F5;
             --white: #FFFFFF; --text-primary: #212121; --text-secondary: #555555;
@@ -81,14 +81,44 @@
         .chat-message.agent { background: rgba(0,0,0,0.2); align-self: flex-start; }
         .chat-message.player { background: var(--primary); color: var(--white); align-self: flex-end; text-shadow: none; }
         .chat-message.system { color: #ccc; font-style: italic; text-align: center; background: none; }
+
+        /* NOVO: Estilo para mensagens de retry */
+        .chat-message.retry {
+            color: #ffa726;
+            font-style: italic;
+            text-align: center;
+            background: rgba(255, 167, 38, 0.1);
+            font-size: var(--font-size-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* NOVO: Spinner de loading */
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 167, 38, 0.3);
+            border-top-color: #ffa726;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         .chat-input-area { display: flex; gap: var(--space-md); }
         #user-input { flex-grow: 1; padding: var(--space-md); border: 1px solid var(--border-color); border-radius: var(--radius-md); background: rgba(0, 0, 0, 0.2); color: var(--text-panel); resize: none; }
         #user-input::placeholder { color: rgba(255, 255, 255, 0.7); }
         .btn { padding: 12px 24px; border: none; border-radius: var(--radius-md); font-size: var(--font-size-base); font-weight: 600; cursor: pointer; transition: all var(--transition-base); }
         .btn-primary { background: var(--primary); color: var(--white); text-align: center; }
         .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .btn-primary:disabled { background: #999; cursor: not-allowed; transform: none; }
         .btn-choice { background: var(--bg-panel); color: var(--text-panel); border: 1px solid var(--border-color); backdrop-filter: blur(5px); text-align: center; padding: 8px 16px; font-size: var(--font-size-sm); }
         .btn-choice:hover { background: var(--bg-panel-hover); border-color: var(--primary); }
+        .btn-choice:disabled { opacity: 0.5; cursor: not-allowed; }
         .choices-container { display: flex; flex-wrap: wrap; gap: var(--space-md); justify-content: center; margin-top: var(--space-md); }
 
         .page-footer {
@@ -165,15 +195,15 @@
                     <div id="progress-display"><p>0%</p></div>
                 </div>
             </div>
-            
+
             <button class="btn home-btn" id="home-btn">🏠 Voltar ao Início</button>
             <button class="btn theme-switcher-btn" id="theme-switcher">☀️/🌙 Tema</button>
         </aside>
     </div>
 
     <footer class="page-footer">
-        Desenvolvido por <a href="https://www.linkedin.com/in/laredo-nunes-0a8a7363" target="_blank">Laredo Nunes</a> | 
-        <a href="https://github.com/laredonunes/ecoquest_api" target="_blank">Repositório</a> | 
+        Desenvolvido por <a href="https://www.linkedin.com/in/laredo-nunes-0a8a7363" target="_blank">Laredo Nunes</a> |
+        <a href="https://github.com/laredonunes/ecoquest_api" target="_blank">Repositório</a> |
         <a href="mailto:laredonunes@gmail.com">Contato</a>
     </footer>
 
@@ -205,7 +235,8 @@
         // --- GAME STATE ---
         const gameState = {
             isWaitingForResponse: false,
-            backendGameState: null
+            backendGameState: null,
+            retryMessageElement: null  // NOVO: referência à mensagem de retry
         };
 
         // --- LÓGICA DO MENU E TEMA ---
@@ -223,7 +254,7 @@
 
         allDOMElements.menuToggle.addEventListener('click', toggleMenu);
         allDOMElements.menuOverlay.addEventListener('click', toggleMenu);
-    
+
         allDOMElements.themeSwitcher.addEventListener('click', () => {
             const currentTheme = localStorage.getItem('theme') || 'light';
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
@@ -246,25 +277,99 @@
             });
         });
 
+        // --- NOVO: FUNÇÕES DE RETRY ---
+        function addRetryMessage(secondsRemaining) {
+            // Remove mensagem anterior se existir
+            if (gameState.retryMessageElement) {
+                gameState.retryMessageElement.remove();
+            }
+
+            const messageEl = document.createElement('div');
+            messageEl.classList.add('chat-message', 'retry');
+            messageEl.innerHTML = `
+                <div class="loading-spinner"></div>
+                <p>Muitas requisições. Tentando novamente em <span id="retry-countdown">${secondsRemaining}</span>s...</p>
+            `;
+
+            allDOMElements.chatHistory.appendChild(messageEl);
+            allDOMElements.chatHistory.scrollTop = allDOMElements.chatHistory.scrollHeight;
+
+            gameState.retryMessageElement = messageEl;
+
+            return messageEl;
+        }
+
+        function updateRetryCountdown(seconds) {
+            const countdownEl = document.getElementById('retry-countdown');
+            if (countdownEl) {
+                countdownEl.textContent = seconds;
+            }
+        }
+
+        function removeRetryMessage() {
+            if (gameState.retryMessageElement) {
+                gameState.retryMessageElement.remove();
+                gameState.retryMessageElement = null;
+            }
+        }
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
         // --- API & UI FUNCTIONS ---
-        async function postData(url = '', data = {}) {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const text = await response.text();
-            let json;
+        async function postData(url = '', data = {}, retryAttempt = 0, maxRetries = 3) {
             try {
-                json = JSON.parse(text);
-            } catch (e) {
-                throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const text = await response.text();
+                let json;
+
+                try {
+                    json = JSON.parse(text);
+                } catch (e) {
+                    throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
+                }
+
+                // 🔄 NOVO: Trata erro 429 (rate limit) com retry automático
+                if (response.status === 429 && retryAttempt < maxRetries) {
+                    const retryAfter = json.retry_after || 3;
+
+                    console.log(`⏳ Rate limit (429): tentando novamente em ${retryAfter}s (tentativa ${retryAttempt + 1}/${maxRetries})`);
+
+                    // Mostra mensagem de retry com countdown
+                    addRetryMessage(retryAfter);
+
+                    // Countdown visual
+                    for (let i = retryAfter; i > 0; i--) {
+                        updateRetryCountdown(i);
+                        await sleep(1000);
+                    }
+
+                    // Remove mensagem de retry
+                    removeRetryMessage();
+
+                    // Tenta novamente
+                    return await postData(url, data, retryAttempt + 1, maxRetries);
+                }
+
+                // Se não for sucesso e não é 429 para retry, lança erro
+                if (!response.ok || json.status === 'error') {
+                    const msg = json.error || response.statusText;
+                    throw new Error(msg);
+                }
+
+                return json;
+
+            } catch (error) {
+                // Remove mensagem de retry se houver
+                removeRetryMessage();
+                throw error;
             }
-            if (!response.ok || json.status === 'error') {
-                const msg = json.error || response.statusText;
-                throw new Error(msg);
-            }
-            return json;
         }
 
         function addMessage(text, sender) {
@@ -279,7 +384,10 @@
             gameState.isWaitingForResponse = disabled;
             allDOMElements.userInput.disabled = disabled;
             allDOMElements.sendBtn.disabled = disabled;
-            allDOMElements.choicesContainer.style.pointerEvents = disabled ? 'none' : 'auto';
+
+            const choiceButtons = allDOMElements.choicesContainer.querySelectorAll('.btn-choice');
+            choiceButtons.forEach(btn => btn.disabled = disabled);
+
             allDOMElements.userInput.placeholder = disabled
                 ? 'Aguardando resposta do agente...'
                 : 'Descreva sua ação...';
@@ -307,7 +415,7 @@
         }
 
         function updateBackgroundImage(dangerMeter) {
-            let imageName = '3.png'; // Imagem padrão para o mar
+            let imageName = '3.png';
             if (dangerMeter >= 90) {
                 imageName = '7.png';
             } else if (dangerMeter >= 70) {
@@ -317,9 +425,9 @@
             } else if (dangerMeter >= 30) {
                 imageName = '4.png';
             }
-            
+
             const newImageUrl = `images/mar/fundo/${imageName}`;
-            
+
             if (allDOMElements.mainHeroBackground.src.endsWith(newImageUrl)) return;
 
             allDOMElements.mainHeroBackground.style.opacity = 0;
@@ -331,12 +439,12 @@
 
         function updateUI(response) {
             const { narrative, game_state } = response;
-            
+
             addMessage(narrative.panel_description, 'agent');
             renderChoices(narrative.inner_voice_options);
-            
+
             gameState.backendGameState = game_state;
-            
+
             const chapter = response.chapter || 'Investigação em curso';
             const op = response.operation || 'Operação desconhecida';
             const progress = response.progress || '';
