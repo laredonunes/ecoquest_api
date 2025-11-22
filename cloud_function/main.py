@@ -7,9 +7,7 @@ from floresta.floresta import operacao_cinzas_handler
 from floresta.mangue import mangue_handler
 from floresta.mar import mar_handler
 import logging
-from datetime import datetime, timedelta
-from collections import defaultdict, deque
-from functools import wraps
+from datetime import datetime
 
 # Carrega as variáveis de ambiente do arquivo .env na raiz do projeto
 dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
@@ -29,186 +27,6 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     logger.error("GROQ_API_KEY não configurada!")
     raise ValueError("GROQ_API_KEY não encontrada no arquivo .env")
-
-
-# ==================== RATE LIMITER ====================
-class RateLimiter:
-    """Sistema de rate limiting por IP"""
-
-    def __init__(self):
-        # Controle de requisições por minuto
-        self.ip_requests = defaultdict(deque)  # {ip: deque de timestamps}
-        self.max_requests_per_minute = 20
-        self.time_window = timedelta(seconds=60)
-
-        # Controle de cooldown (3 segundos entre requisições)
-        self.last_request_time = {}  # {ip: timestamp}
-        self.cooldown_seconds = 3
-
-        # Cleanup periódico
-        self.last_cleanup = datetime.now()
-
-        logger.info(
-            f'🛡️ Rate Limiter ativado: {self.max_requests_per_minute} req/min por IP + {self.cooldown_seconds}s cooldown')
-
-    def get_client_ip(self):
-        """Obtém o IP real do cliente (considera proxies/load balancers)"""
-        if request.headers.get('X-Forwarded-For'):
-            return request.headers.get('X-Forwarded-For').split(',')[0].strip()
-        elif request.headers.get('X-Real-IP'):
-            return request.headers.get('X-Real-IP')
-        else:
-            return request.remote_addr
-
-    def check_cooldown(self, ip: str) -> tuple[bool, float]:
-        """
-        Verifica cooldown de 3 segundos entre requisições
-
-        Returns:
-            (permitido: bool, tempo_restante: float)
-        """
-        now = datetime.now()
-
-        if ip in self.last_request_time:
-            time_since_last = (now - self.last_request_time[ip]).total_seconds()
-
-            if time_since_last < self.cooldown_seconds:
-                remaining = self.cooldown_seconds - time_since_last
-                return False, remaining
-
-        return True, 0
-
-    def check_rate_limit(self, ip: str) -> tuple[bool, dict]:
-        """
-        Verifica limite de 20 requisições por minuto
-
-        Returns:
-            (permitido: bool, info: dict)
-        """
-        now = datetime.now()
-
-        # Remove requisições antigas
-        ip_queue = self.ip_requests[ip]
-        while ip_queue and (now - ip_queue[0]) > self.time_window:
-            ip_queue.popleft()
-
-        current_count = len(ip_queue)
-
-        if current_count >= self.max_requests_per_minute:
-            oldest = ip_queue[0]
-            retry_after = int((oldest + self.time_window - now).total_seconds()) + 1
-
-            return False, {
-                "allowed": False,
-                "current_count": current_count,
-                "max_allowed": self.max_requests_per_minute,
-                "retry_after": retry_after
-            }
-
-        return True, {
-            "allowed": True,
-            "current_count": current_count + 1,
-            "max_allowed": self.max_requests_per_minute,
-            "remaining": self.max_requests_per_minute - (current_count + 1)
-        }
-
-    def register_request(self, ip: str):
-        """Registra uma requisição bem-sucedida"""
-        now = datetime.now()
-        self.ip_requests[ip].append(now)
-        self.last_request_time[ip] = now
-
-        # Cleanup periódico (a cada 5 minutos)
-        if (now - self.last_cleanup) > timedelta(minutes=5):
-            self._cleanup()
-
-    def _cleanup(self):
-        """Remove IPs inativos há mais de 1 hora"""
-        now = datetime.now()
-        inactive_threshold = timedelta(hours=1)
-
-        # Limpa ip_requests
-        ips_to_remove = []
-        for ip, queue in self.ip_requests.items():
-            if not queue or (now - queue[-1]) > inactive_threshold:
-                ips_to_remove.append(ip)
-
-        for ip in ips_to_remove:
-            del self.ip_requests[ip]
-
-        # Limpa last_request_time
-        for ip in list(self.last_request_time.keys()):
-            if ip not in self.ip_requests:
-                del self.last_request_time[ip]
-
-        if ips_to_remove:
-            logger.info(f"🧹 Cleanup: removidos {len(ips_to_remove)} IPs inativos")
-
-        self.last_cleanup = now
-
-
-# Instância global do rate limiter
-rate_limiter = RateLimiter()
-
-
-# ==================== DECORATOR ====================
-def apply_rate_limit(f):
-    """Decorator para aplicar rate limiting em rotas"""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        ip = rate_limiter.get_client_ip()
-
-        # 1️⃣ VERIFICA COOLDOWN (3 segundos)
-        cooldown_ok, time_remaining = rate_limiter.check_cooldown(ip)
-        if not cooldown_ok:
-            logger.warning(f"⏳ Cooldown: IP {ip} tentou requisição muito rápida ({time_remaining:.1f}s restantes)")
-            return jsonify({
-                "status": "error",
-                "error": f"Aguarde {int(time_remaining) + 1} segundos antes de fazer outra requisição.",
-                "code": "COOLDOWN_ACTIVE",
-                "retry_after": int(time_remaining) + 1
-            }), 429
-
-        # 2️⃣ VERIFICA RATE LIMIT (20 req/min)
-        rate_ok, rate_info = rate_limiter.check_rate_limit(ip)
-        if not rate_ok:
-            logger.warning(f"🚫 Rate limit: IP {ip} excedeu {rate_info['max_allowed']} req/min")
-            return jsonify({
-                "status": "error",
-                "error": f"Limite de {rate_info['max_allowed']} requisições por minuto excedido.",
-                "code": "RATE_LIMIT_EXCEEDED",
-                "current_count": rate_info['current_count'],
-                "max_allowed": rate_info['max_allowed'],
-                "retry_after": rate_info['retry_after']
-            }), 429
-
-        # 3️⃣ REGISTRA REQUISIÇÃO
-        rate_limiter.register_request(ip)
-
-        # Log de sucesso
-        logger.info(
-            f"✅ IP {ip}: {rate_info['current_count']}/{rate_info['max_allowed']} req (restam {rate_info['remaining']})")
-
-        # 4️⃣ EXECUTA A ROTA
-        response = f(*args, **kwargs)
-
-        # 5️⃣ ADICIONA HEADERS INFORMATIVOS
-        if isinstance(response, tuple):
-            response_obj, status_code = response
-        else:
-            response_obj = response
-            status_code = 200
-
-        if hasattr(response_obj, 'headers'):
-            response_obj.headers['X-RateLimit-Limit'] = str(rate_info['max_allowed'])
-            response_obj.headers['X-RateLimit-Remaining'] = str(rate_info['remaining'])
-            response_obj.headers['X-RateLimit-Cooldown'] = str(rate_limiter.cooldown_seconds)
-
-        return response_obj if not isinstance(response, tuple) else (response_obj, status_code)
-
-    return decorated_function
-
 
 # ==================== CENÁRIOS DISPONÍVEIS ====================
 SCENARIOS = {
@@ -242,11 +60,6 @@ def home():
         "nome": "ECO QUEST - API de RPG Ambiental",
         "versao": "2.0.0",
         "descricao": "Plataforma de jogos investigativos sobre crimes ambientais",
-        "rate_limiting": {
-            "max_requests_per_minute": rate_limiter.max_requests_per_minute,
-            "cooldown_seconds": rate_limiter.cooldown_seconds,
-            "descricao": "Cada IP pode fazer no máximo 20 requisições por minuto, com intervalo mínimo de 3 segundos entre requisições"
-        },
         "cenarios": {
             key: {
                 "titulo": info["titulo"],
@@ -287,12 +100,7 @@ def health():
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
         "groq_api_configured": bool(GROQ_API_KEY),
-        "cenarios_disponiveis": len(SCENARIOS),
-        "rate_limiting_active": True,
-        "limits": {
-            "max_requests_per_minute": rate_limiter.max_requests_per_minute,
-            "cooldown_seconds": rate_limiter.cooldown_seconds
-        }
+        "cenarios_disponiveis": len(SCENARIOS)
     }), 200
 
 
@@ -315,12 +123,11 @@ def list_scenarios():
     }), 200
 
 
-# ==================== ROTAS DOS CENÁRIOS (COM RATE LIMIT) ====================
+# ==================== ROTAS DOS CENÁRIOS ====================
 
 def create_scenario_route(scenario_key: str):
     """Factory para criar rotas de cenários"""
 
-    @apply_rate_limit  # 🛡️ APLICA RATE LIMITING
     def scenario_endpoint():
         try:
             if not request.is_json:
@@ -439,8 +246,6 @@ if __name__ == '__main__':
     print()
     print(f'🚀 Servidor na porta {port}')
     print(f'🔑 API Groq: {"✅" if GROQ_API_KEY else "❌"}')
-    print(
-        f'🛡️ Rate Limiting: ✅ ({rate_limiter.max_requests_per_minute} req/min + {rate_limiter.cooldown_seconds}s cooldown)')
     print()
     print('📋 CENÁRIOS DISPONÍVEIS:')
     for key, info in SCENARIOS.items():
@@ -448,9 +253,19 @@ if __name__ == '__main__':
         print(f'      → POST /api/{key}')
     print()
     print('💡 TESTES RÁPIDOS:')
-    print(f'   curl http://localhost:{port}/health')
     print(
         f'   curl -X POST http://localhost:{port}/api/floresta -H "Content-Type: application/json" -d \'{{"action": "start"}}\'')
+    print(
+        f'   curl -X POST http://localhost:{port}/api/mangue -H "Content-Type: application/json" -d \'{{"action": "start"}}\'')
+    print(
+        f'   curl -X POST http://localhost:{port}/api/mar -H "Content-Type: application/json" -d \'{{"action": "start"}}\'')
+    print()
+    print('💡 Teste a saúde da API:')
+    print('   curl http://localhost:8080/health')
+    print('💡 Inicie um cenário (ex: Operação Cinzas):')
+    print('   curl -X POST http://localhost:8080/api/floresta \\')
+    print('     -H "Content-Type: application/json" \\')
+    print('     -d \'{"action": "start"}\'')
     print()
     print('⏹️ Para parar: Ctrl+C')
     print('=' * 80)
