@@ -4,13 +4,27 @@ EcoQuest é uma plataforma de jogos investigativos em formato de RPG de texto, o
 
 A arquitetura utiliza um **Nginx como Reverse Proxy**, que serve tanto o site estático (front-end) quanto a API RESTful (back-end), garantindo uma implantação robusta e escalável.
 
+---
+
+## 🚀 Demo ao Vivo
+
+**Quer testar agora sem instalar nada?**
+
+Acesse a versão de demonstração hospedada em um servidor particular e comece a jogar imediatamente!
+
+- **[Acessar a Demo do EcoQuest](https://imersao_dev_alura2025.igniscomputo.com/index.html)**
+
+> **Nota:** Por ser um ambiente de teste compartilhado, a API pode apresentar instabilidade ou estar offline. Para a melhor experiência, recomenda-se rodar o projeto localmente via Docker.
+
+---
+
 ## Arquitetura
 
 O projeto é orquestrado pelo `docker-compose.yml` e dividido em dois serviços principais:
 
 1.  **`proxy` (Nginx):**
     - É o único ponto de entrada da aplicação, exposto na porta `8080`.
-    - Serve os arquivos estáticos do site (`index.html`, `floresta.html`, CSS, JS).
+    - Serve os arquivos estáticos do site (`index.html`, `floresta.html`, etc.).
     - Atua como **Reverse Proxy**: todas as requisições que começam com `/api/` são redirecionadas internamente para o serviço `backend`.
 
 2.  **`backend` (Flask + Gunicorn):**
@@ -18,7 +32,7 @@ O projeto é orquestrado pelo `docker-compose.yml` e dividido em dois serviços 
     - **Não é exposto diretamente ao exterior**. Só o serviço `proxy` pode se comunicar com ele, o que aumenta a segurança.
     - Utiliza a API da Groq para gerar a narrativa dinâmica dos jogos.
 
-## Como Executar
+## Como Executar Localmente
 
 ### 1. Pré-requisitos
 
@@ -29,8 +43,8 @@ O projeto é orquestrado pelo `docker-compose.yml` e dividido em dois serviços 
 
 1.  **Clone o repositório:**
     ```bash
-    git clone <url-do-seu-repositorio>
-    cd ecoquest_cloufunction
+    git clone https://github.com/laredonunes/ecoquest_api.git
+    cd ecoquest_api
     ```
 
 2.  **Crie seu arquivo de ambiente:**
@@ -55,8 +69,8 @@ docker-compose up --build
 
 Após a inicialização, tudo estará disponível em `http://localhost:8080`:
 
-- **Site Principal:** `http://localhost:8080` ou `http://localhost:8080/index.html`
-- **Cenário da Floresta:** `http://localhost:8080/floresta.html`
+- **Site Principal:** `http://localhost:8080`
+- **Cenários:** `http://localhost:8080/floresta.html`, `http://localhost:8080/mangue.html`, etc.
 
 O front-end já está configurado para se comunicar com a API através do Nginx, então tudo deve funcionar de forma integrada.
 
