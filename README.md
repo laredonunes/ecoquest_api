@@ -1,89 +1,165 @@
-# EcoQuest - API de RPG Ambiental com Docker
 
-EcoQuest é uma plataforma de jogos investigativos em formato de RPG de texto, onde você assume o papel de um agente ambiental para solucionar crimes na fauna e flora brasileira. A aplicação é totalmente containerizada usando Docker e Docker Compose.
 
-A arquitetura utiliza um **Nginx como Reverse Proxy**, que serve tanto o site estático (front-end) quanto a API RESTful (back-end), garantindo uma implantação robusta e escalável.
+# 🌱 EcoQuest — RPG investigativo ambiental inspirado pela COP30
 
----
+**EcoQuest** é uma experiência narrativa interativa onde você assume o papel de um agente ambiental responsável por proteger biomas brasileiros.
+Cada escolha altera a história — e o futuro da natureza.
 
-## 🚀 Demo ao Vivo
-
-**Quer testar agora sem instalar nada?**
-
-Acesse a versão de demonstração hospedada em um servidor particular e comece a jogar imediatamente!
-
-- **[Acessar a Demo do EcoQuest](https://imersao_dev_alura2025.igniscomputo.com/index.html)**
-
-> **Nota:** Por ser um ambiente de teste compartilhado, a API pode apresentar instabilidade ou estar offline. Para a melhor experiência, recomenda-se rodar o projeto localmente via Docker.
+👉 **Demo Online:** [http://imersao_dev_alura2025.igniscomputo.com/](http://imersao_dev_alura2025.igniscomputo.com/)
+🎥 **Vídeo Demonstrativo:** [https://youtu.be/3--hmndH-10](https://youtu.be/3--hmndH-10)
+📦 **Repositório:** [https://github.com/laredonunes/ecoquest_api](https://github.com/laredonunes/ecoquest_api)
 
 ---
 
-## Arquitetura
+## 💚 Motivação
 
-O projeto é orquestrado pelo `docker-compose.yml` e dividido em dois serviços principais:
+2025 é o ano da **COP30 no Brasil** — um marco global que coloca a urgência ambiental no centro do debate público.
 
-1.  **`proxy` (Nginx):**
-    - É o único ponto de entrada da aplicação, exposto na porta `8080`.
-    - Serve os arquivos estáticos do site (`index.html`, `floresta.html`, etc.).
-    - Atua como **Reverse Proxy**: todas as requisições que começam com `/api/` são redirecionadas internamente para o serviço `backend`.
+Mas ainda existe um desafio: como engajar pessoas reais, estudantes, profissionais e crianças na proteção da natureza?
 
-2.  **`backend` (Flask + Gunicorn):**
-    - Roda a API Flask, que contém a lógica dos cenários de jogo.
-    - **Não é exposto diretamente ao exterior**. Só o serviço `proxy` pode se comunicar com ele, o que aumenta a segurança.
-    - Utiliza a API da Groq para gerar a narrativa dinâmica dos jogos.
+📌 **EcoQuest transforma educação ambiental em experiência jogável**, acessível e emocional.
 
-## Como Executar Localmente
+---
 
-### 1. Pré-requisitos
+## 🕹️ O que é o EcoQuest?
 
-- Docker e Docker Compose instalados.
-- Uma chave de API da [Groq](https://console.groq.com/keys).
+É um RPG curto, simples e direto, onde você:
 
-### 2. Configuração
+✅ Escolhe um bioma (Floresta, Mangue ou Mar)
+✅ Recebe um caso ambiental inspirado em situações reais
+✅ Analisa cenários, riscos, personagens e pistas
+✅ Toma decisões que afetam o ecossistema
+✅ Descobre diferentes desfechos — alguns positivos, outros nem tanto
 
-1.  **Clone o repositório:**
-    ```bash
-    git clone https://github.com/laredonunes/ecoquest_api.git
-    cd ecoquest_api
-    ```
+O objetivo não é ganhar, e sim **refletir**.
 
-2.  **Crie seu arquivo de ambiente:**
-    - Na raiz do projeto, copie o arquivo de exemplo `.env.example` para um novo arquivo chamado `.env`.
-      ```bash
-      cp .env.example .env
-      ```
-    - Abra o arquivo `.env` e **insira sua chave da API da Groq** na variável `GROQ_API_KEY`.
+---
 
-### 3. Executando a Aplicação
+## 🎨 Interface
 
-Com o Docker em execução, inicie todo o ambiente com um único comando:
+EcoQuest foi pensado para ser acolhedor, bonito e fácil de jogar.
+Construído com **HTML, CSS e JavaScript puro**, oferece:
+
+* layout responsivo
+* experiência mobile e desktop
+* modo claro/escuro
+* menu lateral com QR Code para compartilhar
+* botões de decisão simples e diretos
+* identidade visual lúdica e ilustrada
+
+### 🖼️ Capturas de Tela 
+
+![Tela inicial](assets/01.png)
+
+![Tela de escolhas](assets/02.png)
+
+![Tela de escolhas](assets/03.png)
+
+![Tela de escolhas](assets/04.png)
+
+
+---
+
+## 🌍 Biomas disponíveis
+
+* 🌳 **Floresta**
+* 🐟 **Mangue**
+* 🌊 **Mar**
+
+Cada um possui desafios ambientais diferentes — todos presentes no Brasil.
+
+---
+
+## 🤖 Inteligência Artificial no Jogo
+
+A IA é usada de forma **leve e responsável**, apenas para:
+
+* dar fluidez à narrativa
+* adaptar respostas às escolhas do jogador
+* manter coerência ambiental
+
+Ela **não controla o jogo** — apenas ajuda a contar histórias.
+
+---
+
+## 👩‍💻 Tecnologias Utilizadas
+
+**Front-end**
+
+* HTML
+* CSS
+* JavaScript (fetch API)
+
+**Back-end**
+
+* Python + Flask (API simples)
+
+**Suporte**
+
+* Docker (opcional, apenas para facilitar execução)
+* Groq API / Gemini (narrativa adaptativa)
+
+O foco do projeto é **experiência, criatividade e impacto**, não complexidade técnica.
+
+---
+
+## ▶️ Como Jogar
+
+1. Acesse a demo online
+2. Escolha seu bioma favorito
+3. Leia as informações com atenção
+4. Tome decisões
+5. Veja o impacto de suas escolhas
+6. Jogue novamente e compare finais 🌿
+
+Não precisa instalar nada — funciona direto no navegador.
+
+---
+
+## 🛠️ Como Rodar Localmente (opcional)
 
 ```bash
-docker-compose up --build
+git clone https://github.com/laredonunes/ecoquest_api.git
+cd ecoquest_api
+pip install -r requirements.txt
+export GROQ_API_KEY="sua_chave"
+python app.py
 ```
 
-- `--build`: Garante que as imagens Docker serão reconstruídas se houver alguma alteração nos `Dockerfiles`.
-- Para parar a aplicação, pressione `Ctrl+C` no terminal. Para remover os contêineres, use `docker-compose down`.
+Acesse em:
+[http://localhost:8080](http://localhost:8080)
 
-### 4. Acessando a Aplicação
+---
 
-Após a inicialização, tudo estará disponível em `http://localhost:8080`:
+## 🎓 Sobre o Desenvolvimento
 
-- **Site Principal:** `http://localhost:8080`
-- **Cenários:** `http://localhost:8080/floresta.html`, `http://localhost:8080/mangue.html`, etc.
+Estou em **transição de carreira**, e o EcoQuest é meu **primeiro projeto completo utilizando HTML, CSS e JavaScript puro**, criado durante a **Imersão Dev com Alura e Google**.
 
-O front-end já está configurado para se comunicar com a API através do Nginx, então tudo deve funcionar de forma integrada.
+Usei IA, materiais da Imersão e estudos complementares para aprender, testar ideias e melhorar textos — mas **todo o design, lógica, narrativa, organização e implementação são autorais**.
 
-## Fluxo da API
+---
 
-A comunicação entre o front-end e o back-end segue um fluxo simples:
+## ✨ Possibilidades Futuras
 
-1.  **Iniciar um Cenário:**
-    - O cliente envia um `POST` para `/api/<nome-do-cenario>`.
-    - Corpo da requisição: `{"action": "start"}`.
-    - O servidor responde com a primeira cena e o estado inicial do jogo (`game_state`).
+* novos biomas brasileiros (cerrado, caatinga, pampa, pantanal)
+* trilhas educativas para escolas
+* acessibilidade ampliada
+* rankings colaborativos
+* oficinas públicas durante a COP30
+* integração com dados reais ambientais e pesquisas científicas
 
-2.  **Continuar a História:**
-    - O cliente envia um `POST` para o mesmo endpoint.
-    - Corpo da requisição: `{"action": "continue", "player_decision": "...", "game_state": {...}}`.
-    - O servidor usa o `game_state` para dar continuidade à narrativa e responde com a nova cena e o estado atualizado.
+O propósito é tornar o EcoQuest uma ferramenta social aberta.
+
+---
+
+## 💌 Feedback, ideias & contribuições
+
+Está convidado(a) a sugerir melhorias, novos cenários ambientais e ajustes na experiência.
+Vamos construir juntos um jogo que inspira cuidado com o planeta. 💚🌎
+
+---
+
+## 📄 Licença
+
+Projeto aberto para fins educacionais, sociais e ambientais.
+
