@@ -4,12 +4,13 @@
 </p>
 
 ---
+
 # 🌱 EcoQuest — RPG investigativo ambiental inspirado pela COP30
 
 **EcoQuest** é uma experiência narrativa interativa onde você assume o papel de um agente ambiental responsável por proteger biomas brasileiros.
 Cada escolha altera a história — e o futuro da natureza.
 
-👉 **Demo Online:** [http://imersao_dev_alura2025.igniscomputo.com/](http://imersao_dev_alura2025.igniscomputo.com/)
+👉 **Demo Online:** [https://imersao_dev_alura2025.igniscomputo.com](https://imersao_dev_alura2025.igniscomputo.com/)
 
 🎥 **Vídeo Demonstrativo:** [https://youtu.be/3--hmndH-10](https://youtu.be/3--hmndH-10)
 
@@ -180,4 +181,21 @@ Vamos construir juntos um jogo que inspira cuidado com o planeta. 💚🌎
 ## 📄 Licença
 
 Projeto aberto para fins educacionais, sociais e ambientais.
+
+---
+<p align="center">
+  <a href="http://imersao_dev_alura2025.igniscomputo.com/">
+    <img src="assets/10.png" width="62" alt="EcoQuest logo" />
+  </a><br>
+  <a href="http://imersao_dev_alura2025.igniscomputo.com/">Clique aqui para jogar</a>
+</p>
+
+---
+## 🌱 Sobre mim
+
+Sou Laredo Nunes, servidor público e estudante em transição para tecnologia.  
+Acredito no uso da computação, criatividade e IA para promover educação ambiental e impacto social.
+
+🔗 [LinkedIn](mailto:laredonunes@gmail.com?subject=Eu+vi+seu+repositorio+do+ecoquest_api&body=Ola+meu+nome+%C3%A9+%5Bseu+nome%5D)
+📧 [Email](https://www.linkedin.com/in/laredo-nunes-0a8a7363)
 
