@@ -90,6 +90,12 @@
         .btn-choice:hover { background: var(--bg-panel-hover); border-color: var(--primary); }
         .choices-container { display: flex; flex-wrap: wrap; gap: var(--space-md); justify-content: center; margin-top: var(--space-md); }
 
+        .page-footer { position: fixed; bottom: 10px; right: 10px; z-index: 1000; font-size: 12px; color: rgba(255, 255, 255, 0.8); text-shadow: 0 1px 3px rgba(0,0,0,0.6); }
+        .page-footer a { color: #fff; text-decoration: none; font-weight: 600; }
+        .page-footer a:hover { text-decoration: underline; }
+        body.light-theme .page-footer { color: rgba(0,0,0,0.7); text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        body.light-theme .page-footer a { color: #000; }
+
         @media (max-width: 768px) {
             .game-title { width: 200px; top: var(--space-md); }
             .interaction-panel { width: 95%; padding: var(--space-lg); }
@@ -146,6 +152,12 @@
             <button class="btn theme-switcher-btn" id="theme-switcher">☀️/🌙 Tema</button>
         </aside>
     </div>
+
+    <footer class="page-footer">
+        Desenvolvido por <a href="https://www.linkedin.com/in/laredo-nunes-0a8a7363" target="_blank">Laredo Nunes</a> | 
+        <a href="https://github.com/laredonunes/ecoquest_api" target="_blank">Repositório</a> | 
+        <a href="mailto:laredonunes@gmail.com">Contato</a>
+    </footer>
 
     <script src="js/config.js"></script>
     <script>
