@@ -1,10 +1,8 @@
 import os
 import json
 import time
-from datetime import datetime, timedelta
-from collections import deque
+from datetime import datetime
 import requests
-from requests.exceptions import HTTPError
 
 # ==================== CONFIGURAÇÃO - MANGUE ====================
 INVESTIGATION_PHASES = {
@@ -70,49 +68,6 @@ FORMATO JSON:
 Tom: Realista, dilema moral, educativo. JSON válido apenas."""
 
 
-# ==================== RATE LIMITER ====================
-class RateLimiter:
-    """Controla rate limit: máximo X requests por minuto"""
-
-    def __init__(self, max_requests: int = 25, time_window: int = 60):
-        """
-        Args:
-            max_requests: Máximo de requests no período (padrão: 25/min)
-            time_window: Janela de tempo em segundos (padrão: 60s)
-        """
-        self.max_requests = max_requests
-        self.time_window = timedelta(seconds=time_window)
-        self.requests = deque()  # Timestamps das requisições
-        print(f'🛡️ Rate Limiter: {max_requests} req/{time_window}s')
-
-    def wait_if_needed(self):
-        """Aguarda se necessário para respeitar rate limit"""
-        now = datetime.now()
-
-        # Remove requisições antigas (fora da janela)
-        while self.requests and (now - self.requests[0]) > self.time_window:
-            self.requests.popleft()
-
-        # Se atingiu limite, espera até a mais antiga expirar
-        if len(self.requests) >= self.max_requests:
-            wait_until = self.requests[0] + self.time_window
-            wait_seconds = (wait_until - now).total_seconds()
-            if wait_seconds > 0:
-                print(f"⏳ Rate limit preventivo: aguardando {wait_seconds:.1f}s...")
-                time.sleep(wait_seconds + 0.5)  # +0.5s de margem de segurança
-                # Limpa requisições antigas novamente após espera
-                now = datetime.now()
-                while self.requests and (now - self.requests[0]) > self.time_window:
-                    self.requests.popleft()
-
-        # Registra esta requisição
-        self.requests.append(now)
-
-        # Debug: mostra quantas requests na janela atual
-        print(f"📊 Requests na janela: {len(self.requests)}/{self.max_requests}")
-
-
-# ==================== CONTEXT MANAGER ====================
 class ContextManager:
     """Gerencia contexto para economizar tokens"""
 
@@ -146,42 +101,21 @@ class ContextManager:
         return " | ".join(parts)
 
 
-# ==================== MANGUE GAME MASTER ====================
 class MangueGameMaster:
-    """Game Master - Cenário do Mangue com Rate Limiting e Retry"""
+    """Game Master - Cenário do Mangue"""
 
     def __init__(self, groq_api_key: str, model: str = "llama-3.3-70b-versatile"):
-        """
-        Inicializa o Game Master do Mangue
-
-        Args:
-            groq_api_key: Chave da API Groq
-            model: Modelo a usar
-        """
         self.api_key = groq_api_key
         self.model = model
         self.api_url = "https://api.groq.com/openai/v1/chat/completions"
         self.context_manager = ContextManager(max_history=3)
-        self.rate_limiter = RateLimiter(max_requests=25, time_window=60)
         print(f'🌊 Mangue - Usando: {self.model}')
 
-    def _call_groq(self, messages: list, max_tokens: int = 1500, max_retries: int = 3) -> str:
-        """
-        Chama API da Groq com Rate Limiting e Retry automático
-
-        Args:
-            messages: Lista de mensagens
-            max_tokens: Máximo de tokens na resposta
-            max_retries: Número máximo de tentativas em caso de erro 429
-
-        Returns:
-            Texto da resposta
-        """
+    def _call_groq(self, messages: list, max_tokens: int = 1500) -> str:
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}"
         }
-
         payload = {
             "model": self.model,
             "messages": messages,
@@ -189,49 +123,15 @@ class MangueGameMaster:
             "temperature": 0.8,
             "top_p": 0.95
         }
-
-        for attempt in range(max_retries):
-            try:
-                # 🛡️ PREVENÇÃO: Rate limiter verifica antes de chamar
-                self.rate_limiter.wait_if_needed()
-
-                # Faz a requisição
-                response = requests.post(self.api_url, headers=headers, json=payload, timeout=30)
-                response.raise_for_status()
-                data = response.json()
-
-                print(f"✅ Requisição bem-sucedida (tentativa {attempt + 1}/{max_retries})")
-                return data["choices"][0]["message"]["content"]
-
-            except HTTPError as e:
-                if e.response.status_code == 429:  # Rate limit atingido
-                    if attempt < max_retries - 1:
-                        # 🔄 REAÇÃO: Backoff exponencial
-                        wait_time = 2 ** (attempt + 1)  # 2s, 4s, 8s
-                        print(f"⚠️ Rate limit 429! Aguardando {wait_time}s... (tentativa {attempt + 1}/{max_retries})")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        raise Exception(
-                            "❌ Rate limit excedido após múltiplas tentativas.\n"
-                            "   Aguarde 1 minuto ou reduza a frequência de requisições."
-                        )
-                else:
-                    raise Exception(f"Erro HTTP {e.response.status_code}: {str(e)}")
-
-            except requests.exceptions.Timeout:
-                if attempt < max_retries - 1:
-                    print(f"⏱️ Timeout! Tentando novamente... ({attempt + 1}/{max_retries})")
-                    time.sleep(2)
-                    continue
-                else:
-                    raise Exception("❌ Timeout após múltiplas tentativas.")
-
-            except requests.exceptions.RequestException as e:
-                raise Exception(f"Erro na requisição: {str(e)}")
+        try:
+            response = requests.post(self.api_url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+        except requests.exceptions.RequestException as e:
+            raise Exception(f"Erro na API Groq: {str(e)}")
 
     def _clean_json_response(self, response_text: str) -> dict:
-        """Limpa e parseia resposta JSON"""
         response_text = response_text.strip()
         if response_text.startswith('```json'):
             response_text = response_text[7:]
@@ -253,7 +153,6 @@ class MangueGameMaster:
             }
 
     def start_game(self) -> dict:
-        """Inicia uma nova investigação no mangue"""
         opening_prompt = """ABERTURA - "GUARDIÕES DO MANGUE"
 
 Cenário: Costa luxuosa. Mansões com piers sobre mangue. Você é o agente ambiental.
@@ -305,7 +204,6 @@ Crie cena inicial. 3 opções. JSON apenas."""
             return {"status": "error", "error": str(e)}
 
     def continue_game(self, player_decision: str, game_state: dict) -> dict:
-        """Continua a investigação no mangue"""
         phase_info = INVESTIGATION_PHASES.get(game_state["phase"], INVESTIGATION_PHASES["chegada"])
         context = self.context_manager.prioritize_content(phase_info, game_state.get("evidence_collected", []))
         compressed_history = self.context_manager.compress_history(game_state.get("conversation_history", []),
@@ -362,7 +260,6 @@ Narre. Nova pista. 3 opções. JSON."""
             return {"status": "error", "error": str(e)}
 
 
-# ==================== HANDLER STANDALONE ====================
 def mangue_handler(data: dict, groq_api_key: str) -> dict:
     """Handler para o cenário do mangue"""
     game_master = MangueGameMaster(groq_api_key)
@@ -374,7 +271,6 @@ def mangue_handler(data: dict, groq_api_key: str) -> dict:
         return game_master.continue_game(data.get('player_decision', ''), data.get('game_state', {}))
     else:
         return {"status": "error", "error": "Ação inválida"}
-
 
 # ==================== TESTE LOCAL ====================
 if __name__ == "__main__":
@@ -401,7 +297,6 @@ if __name__ == "__main__":
     try:
         game = MangueGameMaster(api_key)
         print('🎬 Iniciando investigação...')
-        print()
         resultado = game.start_game()
 
         if resultado.get('status') == 'error':
@@ -425,5 +320,4 @@ if __name__ == "__main__":
     except Exception as e:
         print(f'❌ ERRO GERAL NO TESTE: {e}')
         import traceback
-
         traceback.print_exc()
