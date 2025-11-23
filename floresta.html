@@ -82,7 +82,6 @@
         .chat-message.player { background: var(--primary); color: var(--white); align-self: flex-end; text-shadow: none; }
         .chat-message.system { color: #ccc; font-style: italic; text-align: center; background: none; }
 
-        /* NOVO: Estilo para mensagem de cooldown */
         .chat-message.cooldown {
             color: #ffa726;
             font-style: italic;
@@ -218,28 +217,50 @@
         const gameState = {
             isWaitingForResponse: false,
             backendGameState: null,
-            lastRequestTime: 0,          // NOVO: timestamp da última requisição
-            cooldownSeconds: 3            // NOVO: tempo de cooldown em segundos
+            lastRequestTime: 0,
+            cooldownSeconds: 3
         };
 
-        // --- NOVO: FUNÇÃO DE COOLDOWN ---
+        // --- COOLDOWN & RETRY FUNCTIONS ---
         function checkCooldown() {
             const now = Date.now();
-            const timeSinceLastRequest = (now - gameState.lastRequestTime) / 1000; // em segundos
-
+            const timeSinceLastRequest = (now - gameState.lastRequestTime) / 1000;
             if (timeSinceLastRequest < gameState.cooldownSeconds) {
                 const remainingTime = Math.ceil(gameState.cooldownSeconds - timeSinceLastRequest);
-                return {
-                    allowed: false,
-                    remainingTime: remainingTime
-                };
+                return { allowed: false, remainingTime: remainingTime };
             }
-
             return { allowed: true };
         }
 
         function updateLastRequestTime() {
             gameState.lastRequestTime = Date.now();
+        }
+
+        function displayManualRetry(retryCallback) {
+            allDOMElements.choicesContainer.innerHTML = '';
+            addMessage('🤖 No momento, os servidores estão sobrecarregados. Por favor, tente novamente.', 'system');
+
+            const retryBtn = document.createElement('button');
+            retryBtn.classList.add('btn', 'btn-choice');
+            retryBtn.textContent = 'Tentar Novamente';
+            
+            retryBtn.addEventListener('click', () => {
+                const systemMessages = allDOMElements.chatHistory.querySelectorAll('.system');
+                if (systemMessages.length > 0) {
+                    systemMessages[systemMessages.length - 1].remove();
+                }
+                retryBtn.remove();
+                retryCallback();
+            }, { once: true });
+
+            allDOMElements.choicesContainer.appendChild(retryBtn);
+            setInputDisabled(false);
+            allDOMElements.userInput.disabled = true;
+            allDOMElements.sendBtn.disabled = true;
+        }
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
         }
 
         // --- LÓGICA DO MENU E TEMA ---
@@ -265,7 +286,7 @@
         });
 
         allDOMElements.homeBtn.addEventListener('click', () => {
-            window.location.href = '/index.html';
+            window.location.href = 'index.html';
         });
 
         const savedTheme = localStorage.getItem('theme') || 'light';
@@ -281,24 +302,43 @@
         });
 
         // --- API & UI FUNCTIONS ---
-        async function postData(url = '', data = {}) {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const text = await response.text();
-            let json;
+        async function postData(url = '', data = {}, retryAttempt = 0, maxRetries = 3) {
             try {
-                json = JSON.parse(text);
-            } catch (e) {
-                throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.status >= 500) {
+                    if (retryAttempt < maxRetries - 1) {
+                        const delay = Math.pow(2, retryAttempt) * 1000;
+                        addMessage(`Servidor instável. Tentando reconectar em ${delay / 1000}s...`, 'system');
+                        await sleep(delay);
+                        const systemMessages = allDOMElements.chatHistory.querySelectorAll('.system');
+                        if (systemMessages.length > 0) systemMessages[systemMessages.length - 1].remove();
+                        return await postData(url, data, retryAttempt + 1, maxRetries);
+                    } else {
+                        throw new Error(`Erro de servidor (status ${response.status})`);
+                    }
+                }
+                
+                const text = await response.text();
+                let json;
+                try {
+                    json = JSON.parse(text);
+                } catch (e) {
+                    throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
+                }
+                
+                if (!response.ok || json.status === 'error') {
+                    const msg = json.error || response.statusText;
+                    throw new Error(msg);
+                }
+                return json;
+            } catch (error) {
+                throw error;
             }
-            if (!response.ok || json.status === 'error') {
-                const msg = json.error || response.statusText;
-                throw new Error(msg);
-            }
-            return json;
         }
 
         function addMessage(text, sender) {
@@ -314,7 +354,6 @@
             allDOMElements.userInput.disabled = disabled;
             allDOMElements.sendBtn.disabled = disabled;
 
-            // MODIFICADO: desabilita visualmente os botões de escolha
             const choiceButtons = allDOMElements.choicesContainer.querySelectorAll('.btn-choice');
             choiceButtons.forEach(btn => btn.disabled = disabled);
 
@@ -331,7 +370,6 @@
                 btn.classList.add('btn', 'btn-choice');
                 btn.textContent = option;
                 btn.addEventListener('click', () => {
-                    // MODIFICADO: verifica cooldown antes de processar clique
                     const cooldownCheck = checkCooldown();
                     if (!cooldownCheck.allowed) {
                         addMessage(
@@ -340,7 +378,6 @@
                         );
                         return;
                     }
-
                     addMessage(option, 'player');
                     sendPlayerDecision(option);
                 });
@@ -365,11 +402,8 @@
             } else if (dangerMeter >= 30) {
                 imageName = '5.png';
             }
-
             const newImageUrl = `images/floresta/fundo/${imageName}`;
-
             if (allDOMElements.mainHeroBackground.src.endsWith(newImageUrl)) return;
-
             allDOMElements.mainHeroBackground.style.opacity = 0;
             setTimeout(() => {
                 allDOMElements.mainHeroBackground.src = newImageUrl;
@@ -379,27 +413,21 @@
 
         function updateUI(response) {
             const { narrative, game_state } = response;
-
             addMessage(narrative.panel_description, 'agent');
             renderChoices(narrative.inner_voice_options);
-
             gameState.backendGameState = game_state;
-
             const chapter = response.chapter || 'Investigação em curso';
             const op = response.operation || 'Operação desconhecida';
             const progress = response.progress || '';
-
             allDOMElements.contextDisplay.innerHTML = `
                 <p><strong>${op}</strong></p>
                 <p>${chapter}</p>
                 <p style="margin-top:8px;">${narrative.narrative_hint || ''}</p>
             `;
-
             allDOMElements.progressDisplay.innerHTML = `
                 <p>${progress}</p>
                 <p>Perigo: ${(narrative.danger_level || '').toUpperCase()}</p>
             `;
-
             updateBackgroundImage(game_state.danger_meter);
         }
 
@@ -408,22 +436,17 @@
             try {
                 setInputDisabled(true);
                 addMessage('Iniciando Operação Cinzas da Floresta...', 'system');
-
-                updateLastRequestTime(); // NOVO: registra timestamp
-
+                updateLastRequestTime();
                 const response = await postData('/api/floresta', { action: 'start' });
                 updateUI(response);
                 setInputDisabled(false);
             } catch (error) {
-                addMessage(`Erro ao iniciar a história: ${error.message}`, 'system');
-                setInputDisabled(false);
+                displayManualRetry(startGame);
             }
         }
 
         async function sendPlayerDecision(playerText) {
-            // NOVO: verifica se já está processando ou em cooldown
             if (gameState.isWaitingForResponse) return;
-
             const cooldownCheck = checkCooldown();
             if (!cooldownCheck.allowed) {
                 addMessage(
@@ -432,14 +455,11 @@
                 );
                 return;
             }
-
             setInputDisabled(true);
             allDOMElements.choicesContainer.innerHTML = '';
             logAction(playerText);
-
             try {
-                updateLastRequestTime(); // NOVO: registra timestamp
-
+                updateLastRequestTime();
                 const payload = {
                     action: 'continue',
                     player_decision: playerText,
@@ -449,16 +469,13 @@
                 updateUI(response);
                 setInputDisabled(false);
             } catch (error) {
-                addMessage(`Erro ao continuar a história: ${error.message}`, 'system');
-                setInputDisabled(false);
+                displayManualRetry(() => sendPlayerDecision(playerText));
             }
         }
 
         async function sendInteractionFromInput() {
             const text = allDOMElements.userInput.value.trim();
             if (!text) return;
-
-            // NOVO: verifica cooldown antes de processar
             const cooldownCheck = checkCooldown();
             if (!cooldownCheck.allowed) {
                 addMessage(
@@ -467,7 +484,6 @@
                 );
                 return;
             }
-
             addMessage(text, 'player');
             allDOMElements.userInput.value = '';
             await sendPlayerDecision(text);

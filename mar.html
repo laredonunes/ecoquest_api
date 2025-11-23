@@ -236,7 +236,7 @@
         });
 
         allDOMElements.homeBtn.addEventListener('click', () => {
-            window.location.href = '/index.html';
+            window.location.href = 'index.html';
         });
 
         const savedTheme = localStorage.getItem('theme') || 'light';
@@ -256,17 +256,14 @@
             if (gameState.retryMessageElement) {
                 gameState.retryMessageElement.remove();
             }
-
             const messageEl = document.createElement('div');
             messageEl.classList.add('chat-message', 'retry');
             messageEl.innerHTML = `
                 <div class="loading-spinner"></div>
                 <p>Muitas requisições. Tentando novamente em <span id="retry-countdown">${secondsRemaining}</span>s...</p>
             `;
-
             allDOMElements.chatHistory.appendChild(messageEl);
             allDOMElements.chatHistory.scrollTop = allDOMElements.chatHistory.scrollHeight;
-
             gameState.retryMessageElement = messageEl;
             return messageEl;
         }
@@ -285,70 +282,88 @@
             }
         }
 
+        function displayManualRetry(retryCallback) {
+            allDOMElements.choicesContainer.innerHTML = '';
+            addMessage('🤖 No momento, os servidores estão sobrecarregados. Por favor, tente novamente.', 'system');
+
+            const retryBtn = document.createElement('button');
+            retryBtn.classList.add('btn', 'btn-choice');
+            retryBtn.textContent = 'Tentar Novamente';
+            
+            retryBtn.addEventListener('click', () => {
+                const systemMessages = allDOMElements.chatHistory.querySelectorAll('.system');
+                if (systemMessages.length > 0) {
+                    systemMessages[systemMessages.length - 1].remove();
+                }
+                retryBtn.remove();
+                retryCallback();
+            }, { once: true });
+
+            allDOMElements.choicesContainer.appendChild(retryBtn);
+            setInputDisabled(false);
+            allDOMElements.userInput.disabled = true;
+            allDOMElements.sendBtn.disabled = true;
+        }
+
         async function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        // --- API & UI FUNCTIONS (CORRIGIDO) ---
+        // --- API & UI FUNCTIONS ---
         async function postData(url = '', data = {}, retryAttempt = 0, maxRetries = 3) {
             try {
-                console.log(`📤 Enviando requisição (tentativa ${retryAttempt + 1}/${maxRetries + 1})`);
-                
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
 
+                if (response.status >= 500) {
+                    if (retryAttempt < maxRetries - 1) {
+                        const delay = Math.pow(2, retryAttempt) * 1000; // 1s, 2s
+                        addMessage(`Servidor instável. Tentando reconectar em ${delay / 1000}s...`, 'system');
+                        await sleep(delay);
+                        const systemMessages = allDOMElements.chatHistory.querySelectorAll('.system');
+                        if (systemMessages.length > 0) systemMessages[systemMessages.length - 1].remove();
+                        return await postData(url, data, retryAttempt + 1, maxRetries);
+                    } else {
+                        throw new Error(`Erro de servidor (status ${response.status})`);
+                    }
+                }
+                
                 const text = await response.text();
                 let json;
-
                 try {
                     json = JSON.parse(text);
                 } catch (e) {
                     throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
                 }
 
-                console.log(`📥 Resposta recebida: status ${response.status}`);
-
                 if (response.status === 429) {
                     if (retryAttempt < maxRetries) {
                         const retryAfter = json.retry_after || 3;
-
-                        console.log(`⏳ Rate limit (429): aguardando ${retryAfter}s antes de tentar novamente...`);
-
                         addRetryMessage(retryAfter);
-
                         for (let i = retryAfter; i > 0; i--) {
                             updateRetryCountdown(i);
                             await sleep(1000);
                         }
-
                         removeRetryMessage();
-
-                        console.log(`🔄 Tentando novamente...`);
-
                         return await postData(url, data, retryAttempt + 1, maxRetries);
                     } else {
-                        console.error(`❌ Máximo de tentativas excedido`);
                         removeRetryMessage();
-                        throw new Error(`Limite de requisições excedido após ${maxRetries} tentativas. Aguarde ${json.retry_after || 3} segundos e recarregue a página.`);
+                        throw new Error(`Limite de requisições excedido.`);
                     }
                 }
 
                 if (!response.ok) {
                     throw new Error(`Erro ${response.status}: ${json.error || response.statusText}`);
                 }
-
                 if (json.status === 'error') {
                     throw new Error(json.error || 'Erro desconhecido');
                 }
-
-                console.log(`✅ Requisição bem-sucedida`);
                 return json;
 
             } catch (error) {
-                console.error(`❌ Erro na requisição:`, error);
                 removeRetryMessage();
                 throw error;
             }
@@ -454,8 +469,7 @@
                 updateUI(response);
                 setInputDisabled(false);
             } catch (error) {
-                addMessage(`Erro ao iniciar a história: ${error.message}`, 'system');
-                setInputDisabled(false);
+                displayManualRetry(startGame);
             }
         }
 
@@ -475,8 +489,7 @@
                 updateUI(response);
                 setInputDisabled(false);
             } catch (error) {
-                addMessage(`Erro ao continuar a história: ${error.message}`, 'system');
-                setInputDisabled(false);
+                displayManualRetry(() => sendPlayerDecision(playerText));
             }
         }
 

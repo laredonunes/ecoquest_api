@@ -208,6 +208,34 @@
             backendGameState: null
         };
 
+        // --- COOLDOWN & RETRY FUNCTIONS ---
+        function displayManualRetry(retryCallback) {
+            allDOMElements.choicesContainer.innerHTML = '';
+            addMessage('🤖 No momento, os servidores estão sobrecarregados. Por favor, tente novamente.', 'system');
+
+            const retryBtn = document.createElement('button');
+            retryBtn.classList.add('btn', 'btn-choice');
+            retryBtn.textContent = 'Tentar Novamente';
+            
+            retryBtn.addEventListener('click', () => {
+                const systemMessages = allDOMElements.chatHistory.querySelectorAll('.system');
+                if (systemMessages.length > 0) {
+                    systemMessages[systemMessages.length - 1].remove();
+                }
+                retryBtn.remove();
+                retryCallback();
+            }, { once: true });
+
+            allDOMElements.choicesContainer.appendChild(retryBtn);
+            setInputDisabled(false);
+            allDOMElements.userInput.disabled = true;
+            allDOMElements.sendBtn.disabled = true;
+        }
+
+        async function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
         // --- LÓGICA DO MENU E TEMA ---
         function toggleMenu() {
             allDOMElements.menuToggle.classList.toggle('open');
@@ -231,7 +259,7 @@
         });
 
         allDOMElements.homeBtn.addEventListener('click', () => {
-            window.location.href = '/index.html';
+            window.location.href = 'index.html';
         });
 
         const savedTheme = localStorage.getItem('theme') || 'light';
@@ -247,24 +275,43 @@
         });
 
         // --- API & UI FUNCTIONS ---
-        async function postData(url = '', data = {}) {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            const text = await response.text();
-            let json;
+        async function postData(url = '', data = {}, retryAttempt = 0, maxRetries = 3) {
             try {
-                json = JSON.parse(text);
-            } catch (e) {
-                throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.status >= 500) {
+                    if (retryAttempt < maxRetries - 1) {
+                        const delay = Math.pow(2, retryAttempt) * 1000;
+                        addMessage(`Servidor instável. Tentando reconectar em ${delay / 1000}s...`, 'system');
+                        await sleep(delay);
+                        const systemMessages = allDOMElements.chatHistory.querySelectorAll('.system');
+                        if (systemMessages.length > 0) systemMessages[systemMessages.length - 1].remove();
+                        return await postData(url, data, retryAttempt + 1, maxRetries);
+                    } else {
+                        throw new Error(`Erro de servidor (status ${response.status})`);
+                    }
+                }
+                
+                const text = await response.text();
+                let json;
+                try {
+                    json = JSON.parse(text);
+                } catch (e) {
+                    throw new Error(`Resposta inválida da API: ${text.slice(0, 200)}...`);
+                }
+                
+                if (!response.ok || json.status === 'error') {
+                    const msg = json.error || response.statusText;
+                    throw new Error(msg);
+                }
+                return json;
+            } catch (error) {
+                throw error;
             }
-            if (!response.ok || json.status === 'error') {
-                const msg = json.error || response.statusText;
-                throw new Error(msg);
-            }
-            return json;
         }
 
         function addMessage(text, sender) {
@@ -364,8 +411,7 @@
                 updateUI(response);
                 setInputDisabled(false);
             } catch (error) {
-                addMessage(`Erro ao iniciar a história: ${error.message}`, 'system');
-                setInputDisabled(false);
+                displayManualRetry(startGame);
             }
         }
 
@@ -385,8 +431,7 @@
                 updateUI(response);
                 setInputDisabled(false);
             } catch (error) {
-                addMessage(`Erro ao continuar a história: ${error.message}`, 'system');
-                setInputDisabled(false);
+                displayManualRetry(() => sendPlayerDecision(playerText));
             }
         }
 
